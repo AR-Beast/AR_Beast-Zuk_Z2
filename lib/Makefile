@@ -185,6 +185,10 @@ obj-$(CONFIG_ASN1) += asn1_decoder.o
 
 obj-$(CONFIG_FONT_SUPPORT) += fonts/
 
+CFLAGS_snappy.o += $(call cc-disable-warning, declaration-after-statement) \
+		   -DNDEBUG=1
+obj-$(CONFIG_SNAPPY) += snappy.o
+
 hostprogs-y	:= gen_crc32table
 clean-files	:= crc32table.h
 
