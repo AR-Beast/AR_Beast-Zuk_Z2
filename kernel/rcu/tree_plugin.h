@@ -1510,8 +1510,15 @@ static bool rcu_preempt_cpu_has_nonlazy_callbacks(int cpu)
 {
 	struct rcu_data *rdp = &per_cpu(rcu_preempt_data, cpu);
 
-	return __rcu_cpu_has_nonlazy_callbacks(rdp);
-}
+		/*
+		 * Don't bother checking unless a grace period has
+		 * completed since we last checked and there are
+		 * callbacks not yet ready to invoke.
+		 */
+		if ((rdp->completed != rnp->completed ||
+		     unlikely(ACCESS_ONCE(rdp->gpwrap))) &&
+		    rdp->nxttail[RCU_DONE_TAIL] != rdp->nxttail[RCU_NEXT_TAIL])
+			note_gp_changes(rsp, rdp);
 
 #else /* #ifdef CONFIG_TREE_PREEMPT_RCU */
 
