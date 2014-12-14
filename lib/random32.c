@@ -151,8 +151,7 @@ static u32 __extract_hwseed(void)
 {
 	unsigned int val = 0;
 
-	(void)(arch_get_random_seed_int(&val) ||
-	       arch_get_random_int(&val));
+(void)(arch_get_random_int(&val));
 
 	return val;
 }
@@ -237,6 +236,25 @@ static void __init __prandom_start_seed_timer(void)
 	seed_timer.expires = jiffies + msecs_to_jiffies(40 * MSEC_PER_SEC);
 	add_timer(&seed_timer);
 }
+
+void prandom_seed_full_state(struct rnd_state __percpu *pcpu_state)
+{
+	int i;
+
+	for_each_possible_cpu(i) {
+		struct rnd_state *state = per_cpu_ptr(pcpu_state, i);
+		u32 seeds[4];
+
+		erandom_get_random_bytes((char *)&seeds, sizeof(seeds));
+		state->s1 = __seed(seeds[0],   2U);
+		state->s2 = __seed(seeds[1],   8U);
+		state->s3 = __seed(seeds[2],  16U);
+		state->s4 = __seed(seeds[3], 128U);
+
+		prandom_warmup(state);
+	}
+}
+EXPORT_SYMBOL(prandom_seed_full_state);
 
 /*
  *	Generate better values after random number generator
