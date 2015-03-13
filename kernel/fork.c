@@ -377,6 +377,10 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 
 	account_kernel_stack(stack, 1);
 
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+	RB_CLEAR_NODE(&tsk->adj_node);
+#endif
+
 	kcov_task_init(tsk);
 
 	return tsk;
