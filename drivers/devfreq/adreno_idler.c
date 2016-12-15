@@ -42,8 +42,8 @@
    Adreno idler will more actively try to ramp down the frequency
    if this is set to a higher value. */
 
-static unsigned long idleworkload = 4000;
->>>>>>> bd8e760... adreno_idler: optimize values
+static unsigned long idleworkload = 1000;
+
 module_param_named(adreno_idler_idleworkload, idleworkload, ulong, 0664);
 
 /* Number of events to wait before ramping down the frequency.
@@ -52,11 +52,11 @@ module_param_named(adreno_idler_idleworkload, idleworkload, ulong, 0664);
    This implementation is to prevent micro-lags on scrolling or playing games.
    Adreno idler will more actively try to ramp down the frequency
    if this is set to a lower value. */
-static unsigned int idlewait = 16;
+static unsigned int idlewait = 50;
 module_param_named(adreno_idler_idlewait, idlewait, uint, 0664);
 
 /* Taken from ondemand */
-static unsigned int downdifferential = 20;
+static unsigned int downdifferential = 42;
 module_param_named(adreno_idler_downdifferential, downdifferential, uint, 0664);
 
 /* Master switch to activate the whole routine */
