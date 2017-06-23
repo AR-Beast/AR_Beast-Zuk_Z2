@@ -5,7 +5,8 @@
  *
  * Based on State_Helper HotPlug, by Pranav Vashi <neobuddy89@gmail.com>
  *
- * @AyushR1 Ayush Rathore Modified for msm8996. 
+ * @AyushR1 1. Ayush Rathore Modified for msm8996. 
+ *          2. Added Display state awareness.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/workqueue.h>
 #include <linux/platform_device.h>
+#include <linux/state_notifier.h>
 
 #define AIO_HOTPLUG			"AiO_HotPlug"
 #define AIO_TOGGLE			0
@@ -58,7 +60,15 @@ static void __ref AiO_HotPlug_work(struct work_struct *work)
 {
 	  // Operations for a big.LITTLE SoC.
 	     // Operations for big Cluster.
-               if (AiO.big_cores == 0)
+	     if (state_suspended) 
+	     {  
+			 cpu_offline_wrapper(3);
+	         cpu_offline_wrapper(2);
+             cpu_offline_wrapper(1);
+	     }
+	     else 
+	     {
+            if (AiO.big_cores == 0)
 	        {
 	           cpu_offline_wrapper(3);
 	   	       cpu_offline_wrapper(2);
@@ -68,17 +78,20 @@ static void __ref AiO_HotPlug_work(struct work_struct *work)
 	           cpu_online_wrapper(3);
 	      	   cpu_offline_wrapper(2);
 		    }
-		else if (AiO.big_cores == 2)
-		{
-	   		cpu_online_wrapper(2);
-	   		cpu_online_wrapper(3);
-		}
-		// Operations for LITTLE Cluster.
-		if (AiO.LITTLE_cores == 1)
-	   	   cpu_offline_wrapper(1);
+		    else if (AiO.big_cores == 2)
+		    {
+	   		   cpu_online_wrapper(2);
+	   		   cpu_online_wrapper(3);
+		    }
+		    
+		    // Operations for LITTLE Cluster.
+		    if (AiO.LITTLE_cores == 1)
+	   	       cpu_offline_wrapper(1);
 	   
-		else if (AiO.LITTLE_cores == 2)
-	   		cpu_online_wrapper(1);		
+		    else if (AiO.LITTLE_cores == 2)
+		   	   cpu_online_wrapper(1);		
+	   		
+	     }
 }
 
 void reschedule_AiO(void)
