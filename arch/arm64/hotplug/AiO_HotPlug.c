@@ -24,6 +24,7 @@
 
 #define AIO_HOTPLUG			"AiO_HotPlug"
 #define AIO_TOGGLE			0
+#define SUSPENDED_CORE	    1
 
       #define DEFAULT_BIG_CORES		2
       #define DEFAULT_LITTLE_CORES	2
@@ -31,6 +32,7 @@
 
 static struct AiO_HotPlug {
        unsigned int toggle;
+       unsigned int suspended;
        unsigned int big_cores;
        unsigned int LITTLE_cores;
 } AiO = {
@@ -60,7 +62,7 @@ static void __ref AiO_HotPlug_work(struct work_struct *work)
 {
 	  // Operations for a big.LITTLE SoC.
 	     // Operations for big Cluster.
-	     if (state_suspended) 
+	     if (state_suspended && AiO.suspended == 1) 
 	     {  
 			 cpu_offline_wrapper(3);
 	         cpu_offline_wrapper(2);
@@ -168,6 +170,31 @@ static ssize_t store_toggle(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t show_suspended(struct kobject *kobj,
+			    struct kobj_attribute *attr, 
+			    char *buf)
+{
+	return sprintf(buf, "%u\n", AiO.suspended);
+}
+
+static ssize_t store_suspended(struct kobject *kobj,
+			     struct kobj_attribute *attr,
+			     const char *buf, size_t count)
+{
+	int ret;
+	unsigned int val;
+
+	ret = sscanf(buf, "%u", &val);
+	if (ret != 1 || val < 0 || val > 1)
+	   return -EINVAL;
+	
+	if (val == AiO.suspended)
+	   return count;
+
+	AiO.suspended = val;
+	return count;
+}
+
 static ssize_t show_big_cores(struct kobject *kobj,
 			      struct kobj_attribute *attr, 
 			      char *buf)
@@ -228,11 +255,13 @@ static struct kobj_attribute _name##_attr = 		\
        __ATTR(_name, 0444, show_##_name, NULL)
 
 KERNEL_ATTR_RW(toggle);
+KERNEL_ATTR_RW(suspended);
       KERNEL_ATTR_RW(big_cores);
       KERNEL_ATTR_RW(LITTLE_cores);
 
 static struct attribute *AiO_HotPlug_attrs[] = {
 	&toggle_attr.attr,
+	&suspended_attr.attr,
 	      &big_cores_attr.attr,
 	      &LITTLE_cores_attr.attr,
 	NULL,
