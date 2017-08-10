@@ -47,6 +47,9 @@ static struct delayed_work AiO_work;
 static struct workqueue_struct *AiO_wq;
 
 int AiO_HotPlug;
+#ifdef CONFIG_ALUCARD_HOTPLUG
+extern int alucard;
+#endif
 
 static void cpu_offline_wrapper(int cpu)
 {
@@ -157,6 +160,10 @@ static ssize_t store_toggle(struct kobject *kobj,
 	if (ret != 1 || val < 0 || val > 1)
 	   return -EINVAL;
 
+#ifdef CONFIG_ALUCARD_HOTPLUG
+	if (alucard)
+	   return -EINVAL; 
+#endif	
 	if (val == AiO.toggle)
 	   return count;
 

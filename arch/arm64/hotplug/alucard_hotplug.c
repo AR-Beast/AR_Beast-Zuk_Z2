@@ -46,6 +46,11 @@ struct hotplug_cpuinfo {
 	unsigned int cur_down_rate;
 };
 
+#ifdef CONFIG_AiO_HotPlug
+extern int AiO_HotPlug;
+#endif
+int alucard;
+
 static DEFINE_PER_CPU(struct hotplug_cpuinfo, od_hotplug_cpuinfo);
 
 #ifndef CONFIG_POWERSUSPEND
@@ -627,6 +632,10 @@ static ssize_t store_hotplug_enable(struct kobject *a, struct attribute *b,
 	if (ret != 1)
 		return -EINVAL;
 
+#ifdef CONFIG_AiO_HotPlug
+	if (AiO_HotPlug)
+		return -EINVAL;	
+#endif
 	input = input > 0;
 
 	if (hotplug_tuners_ins.hotplug_enable == input)
