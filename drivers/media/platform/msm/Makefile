@@ -8,3 +8,5 @@ obj-$(CONFIG_DVB_MPQ) += dvb/
 obj-$(CONFIG_MSMB_CAMERA) += camera_v2/
 obj-$(CONFIG_MSM_AIS) += ais/
 obj-y += sde/
+
+ccflags-y += -Idrivers/media/platform/msm/camera_v2
