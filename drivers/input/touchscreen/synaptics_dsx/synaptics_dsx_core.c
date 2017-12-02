@@ -1381,7 +1381,6 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 
 	status.data[0] = data[0];
 	if (status.unconfigured && !status.flash_prog) {
-		pr_notice("%s: spontaneous reset detected\n", __func__);
 		retval = synaptics_rmi4_reinit_device(rmi4_data);
 		if (retval < 0) {
 			dev_err(rmi4_data->pdev->dev.parent,
