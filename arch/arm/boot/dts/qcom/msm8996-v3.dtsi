@@ -42,6 +42,7 @@
 	qcom,gfx3d_clk_src_v2-opp-handle = <&msm_gpu>;
 	qcom,gfxfreq-speedbin0 =
 		<	   0  0  0 >,
+		<   27000000  1  2 >,
 		<  133000000  2  4 >,
 		<  214000000  3  4 >,
 		<  315000000  4  4 >,
@@ -51,6 +52,7 @@
 		<  652800000  8  7 >;
 	qcom,gfxfreq-mx-speedbin0 =
 		<	   0  0 >,
+		<   27000000  2 >,
 		<  133000000  4 >,
 		<  214000000  4 >,
 		<  315000000  4 >,
@@ -181,6 +183,14 @@
 
 			qcom,gpu-pwrlevel@7 {
 				reg = <7>;
+				qcom,gpu-freq = <27000000>;
+				qcom,bus-freq = <1>;
+				qcom,bus-min = <1>;
+				qcom,bus-max = <2>;
+			};
+
+			qcom,gpu-pwrlevel@8 {
+				reg = <8>;
 				qcom,gpu-freq = <27000000>;
 				qcom,bus-freq = <0>;
 				qcom,bus-min = <0>;
