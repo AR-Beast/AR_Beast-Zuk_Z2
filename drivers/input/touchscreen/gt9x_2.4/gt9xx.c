@@ -2871,6 +2871,7 @@ static int gtp_fb_notifier_callback(struct notifier_block *noti, unsigned long e
 		}
 		else if (*blank == FB_BLANK_POWERDOWN) {
 			GTP_DEBUG("Suspend by fb notifier.");
+			msleep(5);
 			goodix_ts_suspend(ts);
 		}
 	}
