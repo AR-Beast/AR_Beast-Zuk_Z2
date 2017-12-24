@@ -15,6 +15,7 @@
 #include <linux/slab.h>
 #include "cpufreq_governor.h"
 #include <linux/display_state.h>
+#include <linux/err.h>
 
 /* Relaxed version macros */
 #define RELAXED_VERSION_MAJOR			(1)
@@ -572,4 +573,3 @@ fs_initcall(cpufreq_gov_dbs_init);
 module_init(cpufreq_gov_dbs_init);
 #endif
 module_exit(cpufreq_gov_dbs_exit);
-
