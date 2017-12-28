@@ -738,7 +738,7 @@ static int cpufreq_interactive_speedchange_task(void *data)
 				continue;
 			}
 
-			if (unlikely(!display_on)) {
+			if (unlikely(state_suspended)) {
 			    if (ppol->target_freq > tunables->screen_off_max)
 				ppol->target_freq = tunables->screen_off_max;
 			}
