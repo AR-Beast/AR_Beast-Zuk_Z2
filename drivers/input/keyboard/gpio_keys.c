@@ -34,6 +34,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/syscore_ops.h>
 
+#define HOME_KEY_CODE 102
+
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
@@ -54,10 +56,16 @@ struct gpio_keys_drvdata {
 	struct gpio_button_data data[0];
 };
 
+
 static struct device *global_dev;
 static struct syscore_ops gpio_keys_syscore_pm_ops;
 
 static void gpio_keys_syscore_resume(void);
+
+/*
+ * From drivers/misc/fpc1020_ree.c
+ */
+extern bool reset_gpio(void);
 
 /*
  * SYSFS interface for enabling/disabling keys and switches:
@@ -332,14 +340,27 @@ static struct attribute_group gpio_keys_attr_group = {
 	.attrs = gpio_keys_attrs,
 };
 
+/*
+ * Status of home button.
+ * true: pressed
+ * false: not pressed
+ */
+bool home_button_status;
+
 static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
 	const struct gpio_keys_button *button = bdata->button;
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
-	int state;
+	int gpio_value, state;
 
-	state = (__gpio_get_value(button->gpio) ? 1 : 0) ^ button->active_low;
+	gpio_value = __gpio_get_value(button->gpio);
+	state = ( gpio_value ? 1 : 0) ^ button->active_low;
+	pr_info("key gpio value = %d active_low = %d  state=%d home_button_status=%d\n" , gpio_value, button->active_low, state, home_button_status);
+
+	if (state && (int)button->code == HOME_KEY_CODE) {
+		home_button_status = true;
+	}
 
 	if (type == EV_ABS) {
 		if (state)
@@ -349,6 +370,26 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	}
 	input_sync(input);
 }
+
+/*
+ * Used by drivers/misc/fpc1020_ree.c
+ * Resets home button status.
+ */
+void reset_home_button(void)
+{
+	home_button_status = false;
+	pr_info("key home button reset ok, home_button_status=%d", home_button_status);
+}
+
+/*
+ * Used by drivers/misc/fpc1020_ree.c
+ * Returns a bool specifying whether home button is pressed.
+ */
+bool home_button_pressed(void)
+{
+	return home_button_status;
+}
+
 
 static void gpio_keys_gpio_work_func(struct work_struct *work)
 {

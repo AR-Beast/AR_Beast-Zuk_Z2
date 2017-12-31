@@ -23,14 +23,11 @@ ifneq ($(DTB_NAMES),)
 DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
 DTB_OBJS := $(addprefix $(obj)/dts/,$(DTB_LIST))
 else
-DTB_OBJS := $(shell find $(obj)/dts/ -name \*.dtb)
+DTB_OBJS := $(shell find -L $(obj)/dts/ -name \*.dtb)
 endif
 
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
-
-$(obj)/Image-dtb: $(obj)/Image $(DTB_OBJS) FORCE
-	$(call if_changed,cat)
 
 $(obj)/Image.gz: $(obj)/Image FORCE
 	$(call if_changed,gzip)
