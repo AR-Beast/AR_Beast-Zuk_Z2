@@ -32,11 +32,13 @@ bool policy_has_boost_freq(struct cpufreq_policy *policy)
 	return false;
 }
 EXPORT_SYMBOL_GPL(policy_has_boost_freq);
+
 extern unsigned int overfreq_enable;
 
 #if defined CONFIG_MACH_ZUK_Z2_PLUS
 extern unsigned int overfreq_enable;
 #endif
+
 int cpufreq_frequency_table_cpuinfo(struct cpufreq_policy *policy,
 				    struct cpufreq_frequency_table *table)
 {
@@ -68,8 +70,9 @@ int cpufreq_frequency_table_cpuinfo(struct cpufreq_policy *policy,
 #else
 		if (freq > max_freq)
 			max_freq = freq;
-	}
 #endif
+	}
+
 	policy->min = policy->cpuinfo.min_freq = min_freq;
 #if defined CONFIG_MACH_ZUK_Z2_PLUS
 	if (overfreq_enable){
@@ -78,7 +81,7 @@ int cpufreq_frequency_table_cpuinfo(struct cpufreq_policy *policy,
 		policy->max = policy->cpuinfo.max_freq = nax_freq;
 	}
 #else
- 	policy->max = policy->cpuinfo.max_freq = max_freq;
+	policy->max = policy->cpuinfo.max_freq = max_freq;
 #endif
 
 	if (policy->min == ~0)
