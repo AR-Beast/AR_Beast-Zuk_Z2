@@ -1410,6 +1410,7 @@ void diag_dci_notify_client(int peripheral_mask, int data, int proc)
 			} else
 				pr_err("diag: client data is corrupted, signal data: 0x%x\n",
 						info.si_int);
+					}
 		}
 	}
 	mutex_unlock(&driver->dci_mutex);

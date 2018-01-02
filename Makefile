@@ -409,13 +409,7 @@ KBUILD_CFLAGS += -mcpu=cortex-a57+crc+crypto \
 		   -pipe \
 		   -fno-pic \
 		   -fno-gcse \
-		   -fivopts \
-		   -floop-block \
-		   -floop-interchange \
-		   -floop-strip-mine \
-		   -ftree-loop-distribution \
-		   -ftree-loop-distribute-patterns \
-		   -ftree-loop-linear
+
 KBUILD_CFLAGS	+= $(call cc-option, -mno-fix-cortex-a53-835769)
 KBUILD_CFLAGS	+= $(call cc-option, -mno-fix-cortex-a53-843419)
 LDFLAGS_vmlinux	+= $(call ld-option, --no-fix-cortex-a53-835769)
