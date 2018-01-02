@@ -18,7 +18,7 @@
 #include "printk_interface.h"
 
 
-int printk_mode;
+int printk_mode = 0;
 
 
 /* sysfs interface for printk mode */
@@ -92,7 +92,7 @@ static int __init printk_mode_init(void)
 	}
 
 	// initialize printk mode to 1 (enabled) as default
-	printk_mode = 1;
+	printk_mode = 0;
 
 	return (printk_mode_retval);
 }
