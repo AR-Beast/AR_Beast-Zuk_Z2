@@ -221,7 +221,7 @@ int freeze_kernel_threads(void)
 	return error;
 }
 
-#ifdef CONFIG_PRODUCT_Z2_PLUS
+#ifdef CONFIG_MACH_MSM8996_15801
 void thaw_fingerprintd(void)
 {
 	struct task_struct *p;
