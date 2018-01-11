@@ -112,13 +112,9 @@ choice
 		  as desired, independently of the disk parameters and with
 		  any workload. It also tries to guarantee low latency to
 		  interactive and soft real-time applications.
-
-<<<<<<< HEAD
 	config DEFAULT_FIOPS
 		bool "FIOPS" if IOSCHED_FIOPS=y
 		
-=======
->>>>>>> 3d7d8244fcdc... block: cgroups, kconfig, build bits for BFQ-v7r8-3.18.0
 	config DEFAULT_NOOP
 		bool "No-op"
 
@@ -128,11 +124,8 @@ config DEFAULT_IOSCHED
 	string
 	default "deadline" if DEFAULT_DEADLINE
 	default "cfq" if DEFAULT_CFQ
-<<<<<<< HEAD
 	default "fiops" if DEFAULT_FIOPS
-=======
 	default "bfq" if DEFAULT_BFQ
->>>>>>> 3d7d8244fcdc... block: cgroups, kconfig, build bits for BFQ-v7r8-3.18.0
 	default "noop" if DEFAULT_NOOP
 
 endmenu
