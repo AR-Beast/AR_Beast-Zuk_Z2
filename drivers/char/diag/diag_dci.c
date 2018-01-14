@@ -768,7 +768,6 @@ static int diag_dci_remove_req_entry(unsigned char *buf, int len,
 	if (*buf != 0x80) {
 		list_del(&entry->track);
 		kfree(entry);
-		entry = NULL;
 		return 1;
 	}
 
@@ -786,7 +785,6 @@ static int diag_dci_remove_req_entry(unsigned char *buf, int len,
 	if (delayed_rsp_id == 0) {
 		list_del(&entry->track);
 		kfree(entry);
-		entry = NULL;
 		return 1;
 	}
 
@@ -800,7 +798,6 @@ static int diag_dci_remove_req_entry(unsigned char *buf, int len,
 	if (rsp_count > 0 && rsp_count < 0x1000) {
 		list_del(&entry->track);
 		kfree(entry);
-		entry = NULL;
 		return 1;
 	}
 
@@ -1362,7 +1359,7 @@ void diag_dci_channel_open_work(struct work_struct *work)
 
 void diag_dci_notify_client(int peripheral_mask, int data, int proc)
 {
-	int stat = 0;
+	int stat;
 	struct siginfo info;
 	struct list_head *start, *temp;
 	struct diag_dci_client_tbl *entry = NULL;
@@ -1407,10 +1404,10 @@ void diag_dci_notify_client(int peripheral_mask, int data, int proc)
 					if (stat)
 						pr_err("diag: Err sending dci signal to client, signal data: 0x%x, stat: %d\n",
 							info.si_int, stat);
-			} else
-				pr_err("diag: client data is corrupted, signal data: 0x%x\n",
-						info.si_int);
-					}
+				} else
+					pr_err("diag: client data is corrupted, signal data: 0x%x, stat: %d\n",
+						info.si_int, stat);
+			}
 		}
 	}
 	mutex_unlock(&driver->dci_mutex);
@@ -2646,12 +2643,10 @@ int diag_dci_init(void)
 err:
 	pr_err("diag: Could not initialize diag DCI buffers");
 	kfree(driver->apps_dci_buf);
-	driver->apps_dci_buf = NULL;
 
 	if (driver->diag_dci_wq)
 		destroy_workqueue(driver->diag_dci_wq);
 	kfree(partial_pkt.data);
-	partial_pkt.data = NULL;
 	mutex_destroy(&driver->dci_mutex);
 	mutex_destroy(&dci_log_mask_mutex);
 	mutex_destroy(&dci_event_mask_mutex);
@@ -2671,9 +2666,7 @@ void diag_dci_channel_init(void)
 void diag_dci_exit(void)
 {
 	kfree(partial_pkt.data);
-	partial_pkt.data = NULL;
 	kfree(driver->apps_dci_buf);
-	driver->apps_dci_buf = NULL;
 	mutex_destroy(&driver->dci_mutex);
 	mutex_destroy(&dci_log_mask_mutex);
 	mutex_destroy(&dci_event_mask_mutex);
@@ -2888,30 +2881,22 @@ fail_alloc:
 				mutex_destroy(&proc_buf->health_mutex);
 				if (proc_buf->buf_primary) {
 					kfree(proc_buf->buf_primary->data);
-					proc_buf->buf_primary->data = NULL;
 					mutex_destroy(
 					   &proc_buf->buf_primary->data_mutex);
 				}
 				kfree(proc_buf->buf_primary);
-				proc_buf->buf_primary = NULL;
 				if (proc_buf->buf_cmd) {
 					kfree(proc_buf->buf_cmd->data);
-					proc_buf->buf_cmd->data = NULL;
 					mutex_destroy(
 					   &proc_buf->buf_cmd->data_mutex);
 				}
 				kfree(proc_buf->buf_cmd);
-				proc_buf->buf_cmd = NULL;
 			}
 		}
 		kfree(new_entry->dci_event_mask);
-		new_entry->dci_event_mask = NULL;
 		kfree(new_entry->dci_log_mask);
-		new_entry->dci_log_mask = NULL;
 		kfree(new_entry->buffers);
-		new_entry->buffers = NULL;
 		kfree(new_entry);
-		new_entry = NULL;
 	}
 	mutex_unlock(&driver->dci_mutex);
 	return DIAG_DCI_NO_REG;
@@ -2942,7 +2927,6 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 	 * masks and send the masks to peripherals
 	 */
 	kfree(entry->dci_log_mask);
-	entry->dci_log_mask = NULL;
 	diag_dci_invalidate_cumulative_log_mask(token);
 	if (token == DCI_LOCAL_PROC)
 		diag_update_userspace_clients(DCI_LOG_MASKS_TYPE);
@@ -2951,7 +2935,6 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 		return ret;
 	}
 	kfree(entry->dci_event_mask);
-	entry->dci_event_mask = NULL;
 	diag_dci_invalidate_cumulative_event_mask(token);
 	if (token == DCI_LOCAL_PROC)
 		diag_update_userspace_clients(DCI_EVENT_MASKS_TYPE);
@@ -2967,7 +2950,6 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 			if (!list_empty(&req_entry->track))
 				list_del(&req_entry->track);
 			kfree(req_entry);
-			req_entry = NULL;
 		}
 	}
 
@@ -2983,7 +2965,6 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 			buf_entry->data = NULL;
 			mutex_unlock(&buf_entry->data_mutex);
 			kfree(buf_entry);
-			buf_entry = NULL;
 		} else if (buf_entry->buf_type == DCI_BUF_CMD) {
 			peripheral = buf_entry->data_source;
 			if (peripheral == APPS_DATA)
@@ -3010,17 +2991,14 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 			mutex_unlock(&buf_entry->data_mutex);
 			mutex_destroy(&buf_entry->data_mutex);
 			kfree(buf_entry);
-			buf_entry = NULL;
 		}
 
 		mutex_lock(&proc_buf->buf_primary->data_mutex);
 		kfree(proc_buf->buf_primary->data);
-		proc_buf->buf_primary->data = NULL;
 		mutex_unlock(&proc_buf->buf_primary->data_mutex);
 
 		mutex_lock(&proc_buf->buf_cmd->data_mutex);
 		kfree(proc_buf->buf_cmd->data);
-		proc_buf->buf_cmd->data = NULL;
 		mutex_unlock(&proc_buf->buf_cmd->data_mutex);
 
 		mutex_destroy(&proc_buf->health_mutex);
@@ -3028,17 +3006,13 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 		mutex_destroy(&proc_buf->buf_cmd->data_mutex);
 
 		kfree(proc_buf->buf_primary);
-		proc_buf->buf_primary = NULL;
 		kfree(proc_buf->buf_cmd);
-		proc_buf->buf_cmd = NULL;
 		mutex_unlock(&proc_buf->buf_mutex);
 	}
 	mutex_destroy(&entry->write_buf_mutex);
 
 	kfree(entry->buffers);
-	entry->buffers = NULL;
 	kfree(entry);
-	entry = NULL;
 
 	if (driver->num_dci_client == 0) {
 		diag_update_proc_vote(DIAG_PROC_DCI, VOTE_DOWN, token);
@@ -3060,8 +3034,8 @@ int diag_dci_write_proc(uint8_t peripheral, int pkt_type, char *buf, int len)
 	    !(driver->feature[PERIPHERAL_MODEM].rcvd_feature_mask)) {
 		DIAG_LOG(DIAG_DEBUG_DCI,
 			"buf: 0x%pK, p: %d, len: %d, f_mask: %d\n",
-			buf, peripheral, len,
-			driver->feature[PERIPHERAL_MODEM].rcvd_feature_mask);
+				buf, peripheral, len,
+				driver->feature[peripheral].rcvd_feature_mask);
 		return -EINVAL;
 	}
 
