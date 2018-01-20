@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,7 +38,6 @@
 #define VFE40_8952_VERSION 0x10060000
 #define VFE40_8976_VERSION 0x10050000
 #define VFE40_8937_VERSION 0x10080000
-#define VFE40_8917_VERSION 0x10080001
 #define VFE40_8953_VERSION 0x10090000
 #define VFE32_8909_VERSION 0x30600
 
@@ -134,8 +133,6 @@ struct msm_isp_timestamp {
 };
 
 struct msm_vfe_irq_ops {
-	void (*read_irq_status_and_clear)(struct vfe_device *vfe_dev,
-		uint32_t *irq_status0, uint32_t *irq_status1);
 	void (*read_irq_status)(struct vfe_device *vfe_dev,
 		uint32_t *irq_status0, uint32_t *irq_status1);
 	void (*process_reg_update)(struct vfe_device *vfe_dev,
@@ -153,11 +150,9 @@ struct msm_vfe_irq_ops {
 		struct msm_isp_timestamp *ts);
 	void (*process_axi_irq)(struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
-		uint32_t pingpong_status,
 		struct msm_isp_timestamp *ts);
 	void (*process_stats_irq)(struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
-		uint32_t pingpong_status,
 		struct msm_isp_timestamp *ts);
 	void (*config_irq)(struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
@@ -187,7 +182,6 @@ struct msm_vfe_axi_ops {
 		struct msm_vfe_axi_stream *stream_info);
 	void (*clear_wm_irq_mask)(struct vfe_device *vfe_dev,
 		struct msm_vfe_axi_stream *stream_info);
-	void (*clear_irq_mask)(struct vfe_device *vfe_dev);
 
 	void (*cfg_wm_reg)(struct vfe_device *vfe_dev,
 		struct msm_vfe_axi_stream *stream_info,
@@ -448,10 +442,9 @@ struct msm_vfe_axi_stream {
 
 	uint32_t runtime_num_burst_capture;
 	uint32_t runtime_output_format;
-	enum msm_stream_rdi_input_type  rdi_input_type;
+	enum msm_stream_memory_input_t  memory_input;
 	struct msm_isp_sw_framskip sw_skip;
 	uint8_t sw_ping_pong_bit;
-	uint8_t sw_sof_ping_pong_bit;
 };
 
 struct msm_vfe_axi_composite_info {
@@ -468,7 +461,6 @@ enum msm_vfe_camif_state {
 
 struct msm_vfe_src_info {
 	uint32_t frame_id;
-	uint32_t session_id;
 	uint32_t reg_update_frame_id;
 	uint8_t active;
 	uint8_t flag;
@@ -575,7 +567,6 @@ struct msm_vfe_tasklet_queue_cmd {
 	struct list_head list;
 	uint32_t vfeInterruptStatus0;
 	uint32_t vfeInterruptStatus1;
-	uint32_t vfePingPongStatus;
 	struct msm_isp_timestamp ts;
 	uint8_t cmd_used;
 };
@@ -703,6 +694,11 @@ struct msm_vfe_common_subdev {
 	struct msm_vfe_common_dev_data *common_data;
 };
 
+struct isp_proc {
+	uint32_t  kernel_sofid;
+	uint32_t  vfeid;
+};
+
 struct vfe_device {
 	/* Driver private data */
 	struct platform_device *pdev;
@@ -736,6 +732,7 @@ struct vfe_device {
 	spinlock_t shared_data_lock;
 	spinlock_t reg_update_lock;
 	spinlock_t tasklet_lock;
+	spinlock_t completion_lock;
 
 	/* Tasklet info */
 	atomic_t irq_cnt;
@@ -785,9 +782,8 @@ struct vfe_device {
 	/* before halt irq info */
 	uint32_t recovery_irq0_mask;
 	uint32_t recovery_irq1_mask;
-	/* Store the buf_idx for pd stats RDI stream */
-	uint8_t pd_buf_idx;
 	uint32_t ms_frame_id;
+	struct isp_proc *isp_page;
 };
 
 struct vfe_parent_device {
