@@ -1150,6 +1150,9 @@ static ssize_t store_io_is_busy(struct cpufreq_impulse_tunables *tunables,
 	ret = kstrtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
+	/* Prevent setting 1 here */
+	if (val == 1)
+		val = 0;
 	tunables->io_is_busy = val;
 
 	if (!tunables->use_sched_load)
