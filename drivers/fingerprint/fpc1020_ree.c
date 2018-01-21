@@ -57,37 +57,33 @@ struct fpc1020_data {
 	int screen_on;
 };
 
-/*
- * From drivers/input/keyboard/gpio_keys.c
- */
+/* From drivers/input/keyboard/gpio_keys.c */
 extern bool home_button_pressed(void);
-/*
- * From drivers/input/keyboard/gpio_keys.c
- */
 extern void reset_home_button(void);
 
 bool reset;
 
-static bool utouch_disable;
+static int fb_notifier_callback(struct notifier_block *self,
+		unsigned long event, void *data);
 
-static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data);
-
-static ssize_t irq_get(struct device* device,
-		struct device_attribute* attribute,
-		char* buffer)
+static ssize_t irq_get(struct device *device,
+		struct device_attribute *attribute,
+		char *buffer)
 {
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 	int irq = gpio_get_value(fpc1020->irq_gpio);
+
 	return scnprintf(buffer, PAGE_SIZE, "%i\n", irq);
 }
 
-static ssize_t irq_set(struct device* device,
-		struct device_attribute* attribute,
-		const char* buffer, size_t count)
+static ssize_t irq_set(struct device *device,
+		struct device_attribute *attribute,
+		const char *buffer, size_t count)
 {
 	int retval = 0;
 	u64 val;
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
+
 	retval = kstrtou64(buffer, 0, &val);
 	if (val == 1)
 		enable_irq(fpc1020->irq);
@@ -100,49 +96,50 @@ static ssize_t irq_set(struct device* device,
 
 static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_set);
 
-static ssize_t fp_wl_get(struct device* device,
-		struct device_attribute* attribute,
-		char * buffer)
+static ssize_t fp_wl_get(struct device *device,
+		struct device_attribute *attribute,
+		char *buffer)
 {
-	//struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	/* struct fpc1020_data* fpc1020 = dev_get_drvdata(device); */
 	return 0;
 }
 
-static ssize_t fp_wl_set(struct device* device,
-		struct device_attribute* attribute,
-		const char* buffer, size_t count)
+static ssize_t fp_wl_set(struct device *device,
+		struct device_attribute *attribute,
+		const char *buffer, size_t count)
 {
 	int retval = 0;
 	u64 val;
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
+
 	retval = kstrtou64(buffer, 0, &val);
 	if (val == 1 && !wake_lock_active(&fpc1020->fp_wl))
 		wake_lock(&fpc1020->fp_wl);
 	else if (val == 0 && wake_lock_active(&fpc1020->fp_wl))
 		wake_unlock(&fpc1020->fp_wl);
-	else {
+	else
 		pr_err("HAL wakelock request fail, val = %d\n", (int)val);
-	}
 	return strnlen(buffer, count);
 }
 
 static DEVICE_ATTR(wl, S_IRUSR | S_IWUSR, fp_wl_get, fp_wl_set);
 
-static ssize_t get_wakeup_status(struct device* device,
-		struct device_attribute* attribute,
-		char* buffer)
+static ssize_t get_wakeup_status(struct device *device,
+		struct device_attribute *attribute,
+		char *buffer)
 {
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
+
 	return scnprintf(buffer, PAGE_SIZE, "%i\n", fpc1020->wakeup_status);
 }
 
-static ssize_t set_wakeup_status(struct device* device,
-		struct device_attribute* attribute,
-		const char* buffer, size_t count)
+static ssize_t set_wakeup_status(struct device *device,
+		struct device_attribute *attribute,
+		const char *buffer, size_t count)
 {
 	int retval = 0;
 	u64 val;
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 
 	retval = kstrtou64(buffer, 0, &val);
 	pr_info("val === %d\n", (int)val);
@@ -152,38 +149,49 @@ static ssize_t set_wakeup_status(struct device* device,
 	} else if (val == 0) {
 		disable_irq_wake(fpc1020->irq);
 		fpc1020->wakeup_status = 0;
-	}
-	else
+	} else
 		return -ENOENT;
 
 	return strnlen(buffer, count);
 }
 
-static DEVICE_ATTR(wakeup, S_IRUSR | S_IWUSR, get_wakeup_status, set_wakeup_status);
+static DEVICE_ATTR(wakeup, S_IRUSR | S_IWUSR,
+		get_wakeup_status, set_wakeup_status);
 
-static ssize_t get_key(struct device* device, struct device_attribute* attribute, char* buffer)
+static ssize_t get_key(struct device *device,
+		struct device_attribute *attribute, char *buffer)
 {
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
+
 	return scnprintf(buffer, PAGE_SIZE, "%i\n", fpc1020->report_key);
 }
 
-static ssize_t set_key(struct device* device,
-		struct device_attribute* attribute,
-		const char*buffer, size_t count)
+static int longtap = 1;
+module_param_named(longtap, longtap, int, 0664);
+
+static ssize_t set_key(struct device *device,
+		struct device_attribute *attribute,
+		const char *buffer, size_t count)
 {
 	int retval = 0;
 	u64 val;
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 	bool home_pressed;
 
 	retval = kstrtou64(buffer, 0, &val);
-	if (!retval && !utouch_disable) {
-		if (val == KEY_HOME)
-			val = KEY_NAVI_LONG;  //Convert to U-touch long press keyValue
+	if (!retval) {
+		if (val == KEY_HOME) {
+			/* For the sysfs longtap integration */
+			if (longtap)
+				val = KEY_NAVI_LONG;  /* Convert to U-touch long press keyValue */
+			else
+				return -ENOENT;
+		}
 
-	    home_pressed = home_button_pressed();
+		home_pressed = home_button_pressed();
 
-		if (val && home_pressed) val = 0;
+		if (val && home_pressed)
+			val = 0;
 
 		pr_info("home key pressed = %d\n", (int)home_pressed);
 		fpc1020->report_key = (int)val;
@@ -193,44 +201,12 @@ static ssize_t set_key(struct device* device,
 			pr_info("calling home key reset");
 			reset_home_button();
 		}
-	} else if (retval)
+	} else
 		return -ENOENT;
 	return strnlen(buffer, count);
 }
 
 static DEVICE_ATTR(key, S_IRUSR | S_IWUSR, get_key, set_key);
-
-static ssize_t utouch_store_disable(struct device *dev, 
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-    int value;
-
-	if (1 != sscanf(buf, "%d", &value)) {
-		dev_err(dev, "Failed to parse integer: <%s>\n", buf);
-		return -EINVAL;
-	}
-
-	if (value == 1) {
-		utouch_disable = true;
-		pr_info("utouch disabled\n");
-	} else {
-		utouch_disable = false;
-		pr_info("utouch enabled\n");
-	}
-
-	return count;
-}
-
-static ssize_t utouch_show_disable(struct device *dev, 
-		struct device_attribute *attr, char *buf)
-{
-	if (utouch_disable)
-		return sprintf(buf, "1\n"); 
-	else
-		return sprintf(buf, "0\n"); 
-}
-
-static DEVICE_ATTR(utouch_disable, S_IRUGO|S_IWUSR, utouch_show_disable, utouch_store_disable);
 
 static ssize_t get_screen_stat(struct device* device, struct device_attribute* attribute, char* buffer)
 {
@@ -253,7 +229,6 @@ static struct attribute *attributes[] = {
 	&dev_attr_key.attr,
 	&dev_attr_wl.attr,
 	&dev_attr_screen.attr,
-	&dev_attr_utouch_disable.attr,
 	NULL
 };
 
@@ -264,12 +239,13 @@ static const struct attribute_group attribute_group = {
 static void fpc1020_report_work_func(struct work_struct *work)
 {
 	struct fpc1020_data *fpc1020 = NULL;
+
 	fpc1020 = container_of(work, struct fpc1020_data, input_report_work);
 	if (fpc1020->screen_on == 1) {
 		pr_info("Report key value = %d\n", (int)fpc1020->report_key);
 		input_report_key(fpc1020->input_dev, fpc1020->report_key, 1);
 		input_sync(fpc1020->input_dev);
-		mdelay(30);
+		msleep(30);
 		input_report_key(fpc1020->input_dev, fpc1020->report_key, 0);
 		input_sync(fpc1020->input_dev);
 		fpc1020->report_key = 0;
@@ -323,6 +299,7 @@ err:
 static irqreturn_t fpc1020_irq_handler(int irq, void *_fpc1020)
 {
 	struct fpc1020_data *fpc1020 = _fpc1020;
+
 	pr_info("fpc1020 IRQ interrupt\n");
 	smp_rmb();
 	wake_lock_timeout(&fpc1020->wake_lock, 300);
@@ -357,8 +334,10 @@ static int fpc1020_initial_irq(struct fpc1020_data *fpc1020)
 		return -EINVAL;
 	}
 
-	retval = devm_request_threaded_irq(fpc1020->dev, fpc1020->irq, NULL, fpc1020_irq_handler,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT, dev_name(fpc1020->dev), fpc1020);
+	retval = devm_request_threaded_irq(fpc1020->dev,
+			fpc1020->irq, NULL, fpc1020_irq_handler,
+			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+			dev_name(fpc1020->dev), fpc1020);
 	if (retval) {
 		pr_err("request irq %i failed.\n", fpc1020->irq);
 		fpc1020->irq = -EINVAL;
@@ -371,6 +350,7 @@ static int fpc1020_initial_irq(struct fpc1020_data *fpc1020)
 static int fpc1020_manage_sysfs(struct fpc1020_data *fpc1020)
 {
 	int retval = 0;
+
 	retval = sysfs_create_group(&fpc1020->dev->kobj, &attribute_group);
 	if (retval) {
 		pr_err("Could not create sysfs\n");
@@ -382,6 +362,7 @@ static int fpc1020_manage_sysfs(struct fpc1020_data *fpc1020)
 static int fpc1020_alloc_input_dev(struct fpc1020_data *fpc1020)
 {
 	int retval = 0;
+
 	fpc1020->input_dev = input_allocate_device();
 	if (!fpc1020->input_dev) {
 		pr_info("Input allocate device failed\n");
@@ -410,10 +391,12 @@ static int fpc1020_alloc_input_dev(struct fpc1020_data *fpc1020)
 	return retval;
 }
 
-static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+static int fb_notifier_callback(struct notifier_block *self,
+		unsigned long event, void *data)
 {
 	int *blank;
 	struct fb_event *evdata = data;
+
 	struct fpc1020_data *fpc1020 = container_of(self, struct fpc1020_data, fb_notif);
 	blank = evdata->data;
 	if (evdata && evdata->data && event == FB_EVENT_BLANK && fpc1020) {
@@ -434,7 +417,8 @@ static int fpc1020_probe(struct platform_device *pdev)
 	int retval = 0;
 	struct device *dev = &pdev->dev;
 
-	struct fpc1020_data *fpc1020 = devm_kzalloc(dev, sizeof(struct fpc1020_data), GFP_KERNEL);
+	struct fpc1020_data *fpc1020 = devm_kzalloc(dev,
+			sizeof(struct fpc1020_data), GFP_KERNEL);
 	if (fpc1020 == NULL) {
 		pr_err("fpc1020 allocation error\n");
 		retval = -ENOMEM;
@@ -491,7 +475,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto error_unregister_client;
 	}
 
-	//Disable IRQ
+	/* Disable IRQ */
 	disable_irq(fpc1020->irq);
 
 	return 0;
