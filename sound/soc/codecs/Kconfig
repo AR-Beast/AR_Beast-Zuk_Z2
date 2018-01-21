@@ -860,11 +860,6 @@ config SND_SOC_TPA6130A2
 
 config SND_SOC_MSM_STUB
 	tristate
-	
-config SOUND_CONTROL
-	bool "Sound Control engine"
-	help
-		Sound Control engine by JonasCardoso
 
 config SND_SOC_MSM_HDMI_CODEC_RX
 	bool "HDMI Audio Playback"
