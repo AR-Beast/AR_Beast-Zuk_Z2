@@ -48,6 +48,9 @@ static struct zcomp_backend *backends[] = {
 #ifdef CONFIG_ZRAM_LZ4_COMPRESS
 	&zcomp_lz4,
 #endif
+#if IS_ENABLED(CONFIG_CRYPTO_SNAPPY)
+	"snappy",
+#endif
 	NULL
 };
 
