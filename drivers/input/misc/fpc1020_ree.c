@@ -62,13 +62,8 @@ struct fpc1020_data {
 	struct work_struct irq_work;
 };
 
-/*
- * From drivers/input/keyboard/gpio_keys.c
- */
+/* From drivers/input/keyboard/gpio_keys.c */
 extern bool home_button_pressed(void);
-/*
- * From drivers/input/keyboard/gpio_keys.c
- */
 extern void reset_home_button(void);
 
 bool reset;
@@ -95,33 +90,33 @@ static ssize_t irq_get(struct device* device,
 	return count;
 }
 
-static ssize_t irq_set(struct device* device,
-		struct device_attribute* attribute,
-		const char* buffer, size_t count)
+static ssize_t irq_set(struct device *device,
+		struct device_attribute *attribute,
+		const char *buffer, size_t count)
 {
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 	return count;
 }
 
 static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_set);
 
-static ssize_t get_key(struct device* device, struct device_attribute* attribute, char* buffer)
+static ssize_t get_key(struct device *device, struct device_attribute *attribute, char *buffer)
 {
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 	return scnprintf(buffer, PAGE_SIZE, "%i\n", fpc1020->report_key);
 }
 
 static int longtap = 1;
 module_param_named(longtap, longtap, int, 0664);
 
-static ssize_t set_key(struct device* device,
-		struct device_attribute* attribute,
+static ssize_t set_key(struct device *device,
+		struct device_attribute *attribute,
 		const char*buffer, size_t count)
 {
 	int retval = 0;
 	u64 val;
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 	bool home_pressed;
 
 	retval = kstrtou64(buffer, 0, &val);
