@@ -23,6 +23,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm_runtime.h>
 #include <linux/cclogic-core.h>
+#include <linux/notifier.h>
+#include <linux/export.h>
 
 #include "cclogic-core.h"
 #include "cclogic-class.h"
@@ -34,6 +36,39 @@ static struct mutex cclogic_ops_lock;
 static int m_plug_state = 0;
 
 #define DRIVER_NAME "cclogic"
+
+static BLOCKING_NOTIFIER_HEAD(cclogic_notifier_list);
+
+/**
+ *	cclogic_register_client - register a client notifier
+ *	@nb: notifier block to callback on events
+ */
+int cclogic_register_client(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&cclogic_notifier_list, nb);
+}
+EXPORT_SYMBOL(cclogic_register_client);
+
+/**
+ *	cclogic_unregister_client - unregister a client notifier
+ *	@nb: notifier block to callback on events
+ */
+int cclogic_unregister_client(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&cclogic_notifier_list, nb);
+}
+EXPORT_SYMBOL(cclogic_unregister_client);
+
+/**
+ * cclogic_notifier_call_chain - notify clients of fb_events
+ *
+ */
+int cclogic_notifier_call_chain(unsigned long val, void *v)
+{
+	return blocking_notifier_call_chain(&cclogic_notifier_list, val, v);
+}
+EXPORT_SYMBOL_GPL(cclogic_notifier_call_chain);
+
 /*
  *
  */
@@ -593,6 +628,112 @@ static DEVICE_ATTR(cc,S_IRUGO, cclogic_show_cc, NULL);
 /*
  *
  */
+static ssize_t cclogic_reg_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct cclogic_dev *cclogic_dev = dev_get_drvdata(dev);
+	int size;
+	int reg, value;
+
+	if(cclogic_dev->ops && cclogic_dev->ops->read){
+		reg = 0x08;
+		value = cclogic_dev->ops->read(cclogic_dev->i2c_client,reg);
+		size+=sprintf(&buf[size],"[0x%02x] register = 0x%02x\n",reg,value);
+		pr_debug("[0x%x] = [0x%x]\n", reg, value);
+		reg = 0x09;
+		value = cclogic_dev->ops->read(cclogic_dev->i2c_client,reg);
+		size+=sprintf(&buf[size],"[0x%02x] register = 0x%02x\n",reg,value);
+		pr_debug("[0x%x] = [0x%x]\n", reg, value);
+		reg = 0x0A;
+		value = cclogic_dev->ops->read(cclogic_dev->i2c_client,reg);
+		size+=sprintf(&buf[size],"[0x%02x] register = 0x%02x\n",reg,value);
+		pr_debug("[0x%x] = [0x%x]\n", reg, value);
+		reg = 0x45;
+		value = cclogic_dev->ops->read(cclogic_dev->i2c_client,reg);
+		size+=sprintf(&buf[size],"[0x%02x] register = 0x%02x\n",reg,value);
+		pr_debug("[0x%x] = [0x%x]\n", reg, value);
+		reg = 0xA0;
+		value = cclogic_dev->ops->read(cclogic_dev->i2c_client,reg);
+		size+=sprintf(&buf[size],"[0x%02x] register = 0x%02x\n",reg,value);
+		pr_debug("[0x%x] = [0x%x]\n", reg, value);
+	}
+
+	return size;
+}
+
+ static ssize_t cclogic_reg_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct cclogic_dev *cclogic_dev = dev_get_drvdata(dev);
+//	int ret;
+	int reg, value;
+	char rw[10];
+
+	pr_debug("[%s][%d]\n", __func__, __LINE__);
+	gpio_set_value_cansleep(cclogic_dev->platform_data->enb_gpio,1);
+
+	sscanf(buf,"%s %x %x",rw,&reg, &value);
+	if(!strcmp(rw,"write")){
+		if(cclogic_dev->ops && cclogic_dev->ops->read){
+			cclogic_dev->ops->write(cclogic_dev->i2c_client, reg, value);
+		}
+	}
+	return size;
+}
+
+static DEVICE_ATTR(reg, S_IRUGO | S_IWUSR, cclogic_reg_show, cclogic_reg_store);
+
+/*
+ *
+ */
+#ifdef CONFIG_PRODUCT_Z2_X
+/*
+*	z2-x: GPIO121---typec_usb3_sw_pd---function_switch_gpio10
+*              GPIO82--- usb_uart_en---function_switch_gpio1
+*     gpio121 Low: enable usb30, High: disable usb30
+*     gpio82   Low: connect,        High: disconnect
+*     For otg: gpio82 : high---sleep 300ms---low
+*/
+static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type func)
+{
+	switch(func){
+	case CCLOGIC_FUNC_HIZ:
+		if (gpio_is_valid(p->function_switch_gpio1)){
+			gpio_set_value_cansleep(p->function_switch_gpio1,1);
+		}
+		if (gpio_is_valid(p->function_switch_gpio10)){
+			gpio_set_value_cansleep(p->function_switch_gpio10,0);
+		}
+		break;
+	case CCLOGIC_FUNC_AUDIO:
+	case CCLOGIC_FUNC_USB:
+		if (gpio_is_valid(p->function_switch_gpio1)){
+			gpio_set_value_cansleep(p->function_switch_gpio1,0);
+		}
+		if (gpio_is_valid(p->function_switch_gpio10)){
+			gpio_set_value_cansleep(p->function_switch_gpio10,0);
+		}
+		break;
+	case CCLOGIC_FUNC_OTG:
+		if (gpio_is_valid(p->function_switch_gpio1)){
+			gpio_set_value_cansleep(p->function_switch_gpio1,0);
+		}
+		if (gpio_is_valid(p->function_switch_gpio10)){//if otg, disable usb3.0
+			gpio_set_value_cansleep(p->function_switch_gpio10,0);
+		}
+
+		break;
+	case CCLOGIC_FUNC_UART:
+		if (gpio_is_valid(p->function_switch_gpio1)){
+			gpio_set_value_cansleep(p->function_switch_gpio1,0);
+		}
+		if (gpio_is_valid(p->function_switch_gpio10)){
+			gpio_set_value_cansleep(p->function_switch_gpio10,0);
+		}
+		break;
+	}
+}
+#else
 static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type func)
 {
 	switch(func){
@@ -638,6 +779,7 @@ static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type f
 		break;
 	}
 }
+#endif
 /*
  *
  */
@@ -741,11 +883,13 @@ static int cclogic_do_real_work(struct cclogic_state *state,
 {
 	int ret=0;
 	struct cclogic_platform *p = pdata->platform_data;
+	static int cclogic_last_status = 0;
 
 	pr_debug("[%s][%d]\n", __func__, __LINE__);
 	cc_otg_state = 0;
 	switch(state->evt){
 	case CCLOGIC_EVENT_DETACHED:
+		cclogic_notifier_call_chain(CCLOGIC_EVENT_DETACHED, NULL);
 		pr_debug("%s-->cable detached\n",__func__);
 		cclogic_vbus_power_on(pdata,false);
 		cclogic_func_set(p,CCLOGIC_FUNC_UART);
@@ -755,6 +899,7 @@ static int cclogic_do_real_work(struct cclogic_state *state,
 		pr_debug("%s-->No event\n",__func__);
 		break;
 	case CCLOGIC_EVENT_ATTACHED:
+		cclogic_notifier_call_chain(CCLOGIC_EVENT_ATTACHED, NULL);
 		pr_debug("%s-->cable attached\n",__func__);
 		break;
 	}
@@ -823,7 +968,11 @@ static int cclogic_do_real_work(struct cclogic_state *state,
 		cclogic_func_set(p,CCLOGIC_FUNC_HIZ);
 		cclogic_vbus_power_on(pdata,true);
 		mdelay(300);
+#ifdef CONFIG_PRODUCT_Z2_X
+		cclogic_func_set(p,CCLOGIC_FUNC_OTG);
+#else
 		cclogic_func_set(p,CCLOGIC_FUNC_USB);
+#endif
 		break;
 	case CCLOGIC_USB_HOST:
 		pr_debug("%s-->function switch set to usb device\n",__func__);
@@ -850,6 +999,15 @@ out:
 	if(pdata->typec_version==11){
 		cclogic_class_update_state(&pdata->cdev);
 	}
+
+//	if(unlikely(!gpio_get_value(pdata->platform_data->irq_plug) &&
+	if(unlikely(state->evt == CCLOGIC_EVENT_DETACHED &&
+		cclogic_last_status == CCLOGIC_EVENT_DETACHED)) {
+		msleep(20);
+		pr_debug("cclogic: reset driver ic, try again\n");
+		ret = pdata->ops->chip_reset(pdata->i2c_client);
+	}
+	cclogic_last_status = state->evt;
 
 	return ret;
 }
@@ -898,7 +1056,6 @@ work_end:
 		}else
 			pr_err("[%s][%d] still in error,more than %d retries\n", __func__, __LINE__,CCLOGIC_MAX_RETRIES);
 	}
-
 
 	if(wake_lock_active(&pdata->wakelock)){
 		wake_unlock(&pdata->wakelock);
@@ -990,7 +1147,11 @@ static int cclogic_init_gpio(struct cclogic_dev *cclogic_dev)
 					__func__,pdata->function_switch_gpio10);
 			goto err_gpio1_dir;
 		}
+#ifdef CONFIG_PRODUCT_Z2_X
 		ret = gpio_direction_output(pdata->function_switch_gpio10,0);
+#else
+		ret = gpio_direction_output(pdata->function_switch_gpio10,0);
+#endif
 		if (ret) {
 			dev_err(&client->dev,
 				"%s-->unable to set direction for gpio [%d]\n",
@@ -1016,10 +1177,12 @@ static int cclogic_init_gpio(struct cclogic_dev *cclogic_dev)
 			goto err_gpio2_dir;
 		}
 	} else {
+#ifndef CONFIG_PRODUCT_Z2_X //z2-x don't use function_switch_gpio2
 		ret = -ENODEV;
 		dev_err(&client->dev,
 			 "%s-->function_switch_gpio2 not provided\n",__func__);
 		goto err_gpio10_dir;
+#endif
 	}
 
 	if (gpio_is_valid(pdata->usb_ss_gpio)) {
@@ -1299,6 +1462,7 @@ static struct attribute *cclogic_attrs[] = {
 	&dev_attr_chip_power.attr,
 	&dev_attr_status.attr,
 	&dev_attr_enable.attr,
+	&dev_attr_reg.attr,
 #endif
 	&dev_attr_cc.attr,
 	NULL,
