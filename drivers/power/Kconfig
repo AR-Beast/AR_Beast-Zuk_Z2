@@ -642,6 +642,14 @@ config MSM_BCL_SOMC_CTL
 	help
 	  Say Y here to enable new condition.
 
+config FAST_CHARGE
+       bool "Enable Fast Charge"
+       depends on QPNP_SMBCHARGER
+       default y
+       help
+         This Fast-Charge Driver allows to use a custom fast charge current
+         configurable via sysfs.
+
 config QNS_SYSTEM
 	bool "Qnovo QNS wrapper implementation"
 	default n
