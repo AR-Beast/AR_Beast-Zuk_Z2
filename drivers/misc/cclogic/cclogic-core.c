@@ -683,57 +683,7 @@ static ssize_t cclogic_reg_show(struct device *dev,
 
 static DEVICE_ATTR(reg, S_IRUGO | S_IWUSR, cclogic_reg_show, cclogic_reg_store);
 
-/*
- *
- */
-#ifdef CONFIG_PRODUCT_Z2_X
-/*
-*	z2-x: GPIO121---typec_usb3_sw_pd---function_switch_gpio10
-*              GPIO82--- usb_uart_en---function_switch_gpio1
-*     gpio121 Low: enable usb30, High: disable usb30
-*     gpio82   Low: connect,        High: disconnect
-*     For otg: gpio82 : high---sleep 300ms---low
-*/
-static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type func)
-{
-	switch(func){
-	case CCLOGIC_FUNC_HIZ:
-		if (gpio_is_valid(p->function_switch_gpio1)){
-			gpio_set_value_cansleep(p->function_switch_gpio1,1);
-		}
-		if (gpio_is_valid(p->function_switch_gpio10)){
-			gpio_set_value_cansleep(p->function_switch_gpio10,0);
-		}
-		break;
-	case CCLOGIC_FUNC_AUDIO:
-	case CCLOGIC_FUNC_USB:
-		if (gpio_is_valid(p->function_switch_gpio1)){
-			gpio_set_value_cansleep(p->function_switch_gpio1,0);
-		}
-		if (gpio_is_valid(p->function_switch_gpio10)){
-			gpio_set_value_cansleep(p->function_switch_gpio10,0);
-		}
-		break;
-	case CCLOGIC_FUNC_OTG:
-		if (gpio_is_valid(p->function_switch_gpio1)){
-			gpio_set_value_cansleep(p->function_switch_gpio1,0);
-		}
-		if (gpio_is_valid(p->function_switch_gpio10)){//if otg, disable usb3.0
-			gpio_set_value_cansleep(p->function_switch_gpio10,0);
-		}
 
-		break;
-	case CCLOGIC_FUNC_UART:
-		if (gpio_is_valid(p->function_switch_gpio1)){
-			gpio_set_value_cansleep(p->function_switch_gpio1,0);
-		}
-		if (gpio_is_valid(p->function_switch_gpio10)){
-			gpio_set_value_cansleep(p->function_switch_gpio10,0);
-		}
-		break;
-	}
-}
-#else
 static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type func)
 {
 	switch(func){
@@ -758,7 +708,7 @@ static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type f
 	case CCLOGIC_FUNC_AUDIO:
 		gpio_set_value_cansleep(p->function_switch_gpio2,0);
 		if (gpio_is_valid(p->function_switch_gpio1)){
-#ifdef CONFIG_PRODUCT_Z2_PLUS
+#ifdef CONFIG_MACH_ZUK_Z2_PLUS
 			gpio_set_value_cansleep(p->function_switch_gpio1,0);
 #else
 			gpio_set_value_cansleep(p->function_switch_gpio1,1);
@@ -779,7 +729,6 @@ static void cclogic_func_set(struct cclogic_platform *p,enum cclogic_func_type f
 		break;
 	}
 }
-#endif
 /*
  *
  */
@@ -968,11 +917,7 @@ static int cclogic_do_real_work(struct cclogic_state *state,
 		cclogic_func_set(p,CCLOGIC_FUNC_HIZ);
 		cclogic_vbus_power_on(pdata,true);
 		mdelay(300);
-#ifdef CONFIG_PRODUCT_Z2_X
-		cclogic_func_set(p,CCLOGIC_FUNC_OTG);
-#else
 		cclogic_func_set(p,CCLOGIC_FUNC_USB);
-#endif
 		break;
 	case CCLOGIC_USB_HOST:
 		pr_debug("%s-->function switch set to usb device\n",__func__);
@@ -1147,11 +1092,7 @@ static int cclogic_init_gpio(struct cclogic_dev *cclogic_dev)
 					__func__,pdata->function_switch_gpio10);
 			goto err_gpio1_dir;
 		}
-#ifdef CONFIG_PRODUCT_Z2_X
 		ret = gpio_direction_output(pdata->function_switch_gpio10,0);
-#else
-		ret = gpio_direction_output(pdata->function_switch_gpio10,0);
-#endif
 		if (ret) {
 			dev_err(&client->dev,
 				"%s-->unable to set direction for gpio [%d]\n",
@@ -1177,12 +1118,10 @@ static int cclogic_init_gpio(struct cclogic_dev *cclogic_dev)
 			goto err_gpio2_dir;
 		}
 	} else {
-#ifndef CONFIG_PRODUCT_Z2_X //z2-x don't use function_switch_gpio2
 		ret = -ENODEV;
 		dev_err(&client->dev,
 			 "%s-->function_switch_gpio2 not provided\n",__func__);
 		goto err_gpio10_dir;
-#endif
 	}
 
 	if (gpio_is_valid(pdata->usb_ss_gpio)) {
