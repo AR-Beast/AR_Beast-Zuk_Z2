@@ -615,7 +615,7 @@ static int msm_ispif_reset(struct ispif_device *ispif)
 			ispif->base + ISPIF_VFE_m_INTF_CMD_0(i));
 		msm_camera_io_w(ISPIF_STOP_INTF_IMMEDIATELY,
 			ispif->base + ISPIF_VFE_m_INTF_CMD_1(i));
-		pr_debug("%s: base %pK", __func__, ispif->base);
+		pr_debug("%s: base %lx", __func__, (unsigned long)ispif->base);
 		msm_camera_io_w(0, ispif->base +
 			ISPIF_VFE_m_PIX_INTF_n_CID_MASK(i, 0));
 		msm_camera_io_w(0, ispif->base +
@@ -853,7 +853,7 @@ static uint16_t msm_ispif_get_cids_mask_from_cfg(
 	uint16_t cids_mask = 0;
 	BUG_ON(!entry);
 
-	for (i = 0; i < entry->num_cids && i < MAX_CID_CH_v2; i++)
+	for (i = 0; i < entry->num_cids; i++)
 		cids_mask |= (1 << entry->cids[i]);
 
 	return cids_mask;
@@ -983,7 +983,7 @@ static void msm_ispif_intf_cmd(struct ispif_device *ispif, uint32_t cmd_bits,
 			pr_err("%s: invalid interface type\n", __func__);
 			return;
 		}
-		if (params->entries[i].num_cids > MAX_CID_CH_v2) {
+		if (params->entries[i].num_cids > MAX_CID_CH) {
 			pr_err("%s: out of range of cid_num %d\n",
 				__func__, params->entries[i].num_cids);
 			return;

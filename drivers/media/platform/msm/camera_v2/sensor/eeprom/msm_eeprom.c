@@ -1252,11 +1252,6 @@ static int msm_eeprom_spi_remove(struct spi_device *sdev)
 		return 0;
 	}
 
-	if (!e_ctrl->eboard_info) {
-		pr_err("%s: eboard_info is NULL\n", __func__);
-		return 0;
-	}
-
 	kfree(e_ctrl->i2c_client.spi_client);
 	kfree(e_ctrl->cal_data.mapdata);
 	kfree(e_ctrl->cal_data.map);
@@ -1584,7 +1579,8 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	e_ctrl->is_supported = 0;
 	if (!of_node) {
 		pr_err("%s dev.of_node NULL\n", __func__);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto ectrl_free;
 	}
 
 	/* Set platform device handle */
@@ -1596,7 +1592,8 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 		struct msm_camera_cci_client), GFP_KERNEL);
 	if (!e_ctrl->i2c_client.cci_client) {
 		pr_err("%s failed no memory\n", __func__);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto ectrl_free;
 	}
 
 	e_ctrl->eboard_info = kzalloc(sizeof(
@@ -1646,7 +1643,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	}
 
 	rc = msm_eeprom_get_dt_data(e_ctrl);
-	if (rc)
+	if (rc < 0)
 		goto board_free;
 
 	if (e_ctrl->userspace_probe == 0) {
@@ -1741,6 +1738,7 @@ board_free:
 	kfree(e_ctrl->eboard_info);
 cciclient_free:
 	kfree(e_ctrl->i2c_client.cci_client);
+ectrl_free:
 	kfree(e_ctrl);
 	return rc;
 }
@@ -1757,11 +1755,6 @@ static int msm_eeprom_platform_remove(struct platform_device *pdev)
 	e_ctrl = (struct msm_eeprom_ctrl_t *)v4l2_get_subdevdata(sd);
 	if (!e_ctrl) {
 		pr_err("%s: eeprom device is NULL\n", __func__);
-		return 0;
-	}
-
-	if (!e_ctrl->eboard_info) {
-		pr_err("%s: eboard_info is NULL\n", __func__);
 		return 0;
 	}
 

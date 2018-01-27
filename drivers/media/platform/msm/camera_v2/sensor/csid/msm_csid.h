@@ -24,10 +24,6 @@
 
 #define CSID_SOF_DEBUG_COUNT                      3
 
-#define CSID_SOF_DEBUG_COUNT                      3
-
-#define CSID_SOF_DEBUG_COUNT                      3
-
 enum csiphy_lane_assign {
 	PHY_LANE_D0,
 	PHY_LANE_CLK,

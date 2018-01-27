@@ -17,6 +17,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
+#include <media/msm_isp.h>
 #include "msm_sd.h"
 #include "msm_cci.h"
 #include "msm_cam_cci_hwreg.h"
@@ -1812,8 +1813,6 @@ static void msm_cci_init_cci_params(struct cci_device *new_cci_dev)
 
 		for (j = 0; j < NUM_QUEUES; j++) {
 			mutex_init(&new_cci_dev->cci_master_info[i].mutex_q[j]);
-			spin_lock_init(&new_cci_dev->
-				cci_master_info[i].lock_q[j]);
 			init_completion(&new_cci_dev->
 				cci_master_info[i].report_q[j]);
 			if (j == QUEUE_0)
@@ -1822,7 +1821,9 @@ static void msm_cci_init_cci_params(struct cci_device *new_cci_dev)
 			else
 				new_cci_dev->cci_i2c_queue_info[i][j].
 					max_queue_size = CCI_I2C_QUEUE_1_SIZE;
-		}
+			}
+			spin_lock_init(&new_cci_dev->
+				cci_master_info[i].lock_q[j]);
 	}
 	return;
 }
@@ -2136,10 +2137,6 @@ static int msm_cci_probe(struct platform_device *pdev)
 		rc = -ENODEV;
 		goto cci_no_resource;
 	}
-	CDBG("%s line %d cci irq start %d end %d\n", __func__,
-		__LINE__,
-		(int) new_cci_dev->irq->start,
-		(int) new_cci_dev->irq->end);
 	new_cci_dev->io = request_mem_region(new_cci_dev->mem->start,
 		resource_size(new_cci_dev->mem), pdev->name);
 	if (!new_cci_dev->io) {
@@ -2147,7 +2144,10 @@ static int msm_cci_probe(struct platform_device *pdev)
 		rc = -EBUSY;
 		goto cci_no_resource;
 	}
-
+	CDBG("%s line %d cci irq start %d end %d\n", __func__,
+		__LINE__,
+		(int) new_cci_dev->irq->start,
+		(int) new_cci_dev->irq->end);
 	new_cci_dev->base = ioremap(new_cci_dev->mem->start,
 		resource_size(new_cci_dev->mem));
 	if (!new_cci_dev->base) {

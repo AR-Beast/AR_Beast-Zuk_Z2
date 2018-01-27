@@ -26,7 +26,6 @@
 #include <linux/msm-bus-board.h>
 
 #include "msm_buf_mgr.h"
-#include "cam_hw_ops.h"
 
 #define VFE40_8974V1_VERSION 0x10000018
 #define VFE40_8974V2_VERSION 0x1001001A
@@ -38,6 +37,7 @@
 #define VFE40_8952_VERSION 0x10060000
 #define VFE40_8976_VERSION 0x10050000
 #define VFE40_8937_VERSION 0x10080000
+#define VFE40_8917_VERSION 0x10080001
 #define VFE40_8953_VERSION 0x10090000
 #define VFE32_8909_VERSION 0x30600
 
@@ -150,9 +150,11 @@ struct msm_vfe_irq_ops {
 		struct msm_isp_timestamp *ts);
 	void (*process_axi_irq)(struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
+		uint32_t pingpong_status,
 		struct msm_isp_timestamp *ts);
 	void (*process_stats_irq)(struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
+		uint32_t pingpong_status,
 		struct msm_isp_timestamp *ts);
 	void (*config_irq)(struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
@@ -243,8 +245,6 @@ struct msm_vfe_core_ops {
 	int (*ahb_clk_cfg)(struct vfe_device *vfe_dev,
 			struct msm_isp_ahb_clk_cfg *ahb_cfg);
 	void (*set_halt_restart_mask)(struct vfe_device *vfe_dev);
-	int (*start_fetch_eng_multi_pass)(struct vfe_device *vfe_dev,
-		void *arg);
 };
 struct msm_vfe_stats_ops {
 	int (*get_stats_idx)(enum msm_isp_stats_type stats_type);
@@ -567,6 +567,7 @@ struct msm_vfe_tasklet_queue_cmd {
 	struct list_head list;
 	uint32_t vfeInterruptStatus0;
 	uint32_t vfeInterruptStatus1;
+	uint32_t vfePingPongStatus;
 	struct msm_isp_timestamp ts;
 	uint8_t cmd_used;
 };
@@ -694,6 +695,11 @@ struct msm_vfe_common_subdev {
 	struct msm_vfe_common_dev_data *common_data;
 };
 
+struct isp_proc {
+	uint32_t  kernel_sofid;
+	uint32_t  vfeid;
+};
+
 struct vfe_device {
 	/* Driver private data */
 	struct platform_device *pdev;
@@ -715,7 +721,6 @@ struct vfe_device {
 	uint32_t **vfe_clk_rates;
 	size_t num_clk;
 	size_t num_rates;
-	enum cam_ahb_clk_vote ahb_vote;
 
 	/* Sync variables*/
 	struct completion reset_complete;
@@ -778,6 +783,7 @@ struct vfe_device {
 	uint32_t recovery_irq0_mask;
 	uint32_t recovery_irq1_mask;
 	uint32_t ms_frame_id;
+	struct isp_proc *isp_page;
 };
 
 struct vfe_parent_device {

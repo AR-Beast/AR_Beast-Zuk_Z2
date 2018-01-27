@@ -14,7 +14,6 @@
 
 #include "msm_isp.h"
 
-#define HANDLE_TO_IDX(handle) (handle & 0xFF)
 #define SRC_TO_INTF(src) \
 	((src < RDI_INTF_0 || src == VFE_AXI_SRC_MAX) ? VFE_PIX_0 : \
 	(VFE_RAW_0 + src - RDI_INTF_0))
@@ -74,7 +73,7 @@ void msm_isp_notify(struct vfe_device *vfe_dev, uint32_t event_type,
 
 void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
-	struct msm_isp_timestamp *ts);
+	uint32_t pingpong_status, struct msm_isp_timestamp *ts);
 
 void msm_isp_axi_disable_all_wm(struct vfe_device *vfe_dev);
 
@@ -119,7 +118,4 @@ static inline void msm_isp_cfg_stream_scratch(struct vfe_device *vfe_dev,
 	stream_info->buf[pingpong_bit] = NULL;
 }
 
-int msm_isp_cfg_offline_ping_pong_address(struct vfe_device *vfe_dev,
-	struct msm_vfe_axi_stream *stream_info, uint32_t pingpong_status,
-	uint32_t buf_idx);
 #endif /* __MSM_ISP_AXI_UTIL_H__ */

@@ -25,6 +25,7 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 #include <linux/workqueue.h>
+#include <media/msm_isp.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/msmb_camera.h>
@@ -1372,11 +1373,6 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.stream_id = (iden & 0xFFFF);
 			buff_mgr_info.frame_id = processed_frame->frame_id;
 			buff_mgr_info.timestamp = processed_frame->timestamp;
-			/*
-			 * Update the reserved field (cds information) to buffer
-			 * manager structure so it is propogated back to HAL
-			 */
-			buff_mgr_info.reserved = processed_frame->reserved;
 			if (processed_frame->batch_info.batch_mode ==
 				BATCH_MODE_VIDEO ||
 				(IS_BATCH_BUFFER_ON_PREVIEW(
@@ -1424,11 +1420,6 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.timestamp = processed_frame->timestamp;
 			buff_mgr_info.index =
 				processed_frame->duplicate_buffer_info.index;
-			/*
-			 * Update the reserved field (cds information) to buffer
-			 * manager structure so it is propogated back to HAL
-			 */
-			buff_mgr_info.reserved = processed_frame->reserved;
 			if (put_buf) {
 				rc = msm_cpp_buffer_ops(cpp_dev,
 					VIDIOC_MSM_BUF_MNGR_PUT_BUF,
@@ -2330,12 +2321,16 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 		return -EINVAL;
 	}
 
-	if (!new_frame->partial_frame_indicator) {
-		if (cpp_frame_msg[new_frame->msg_len - 1] !=
-			MSM_CPP_MSG_ID_TRAILER) {
-			pr_err("Invalid frame message\n");
-			return -EINVAL;
-		}
+	if (cpp_frame_msg[new_frame->msg_len - 1] !=
+		MSM_CPP_MSG_ID_TRAILER) {
+		pr_err("Invalid frame message\n");
+		return -EINVAL;
+	}
+	if (stripe_base == UINT_MAX || new_frame->num_strips >
+		(UINT_MAX - 1 - stripe_base) / stripe_size) {
+		pr_err("Invalid frame message,num_strips %d is large\n",
+			new_frame->num_strips);
+		return -EINVAL;
 	}
 
 	/* Stripe index starts at zero */
@@ -2752,31 +2747,28 @@ end:
 	return rc;
 }
 
-static int msm_cpp_validate_ioctl_input(unsigned int cmd, void *arg,
+static int msm_cpp_validate_input(unsigned int cmd, void *arg,
 	struct msm_camera_v4l2_ioctl_t **ioctl_ptr)
 {
 	switch (cmd) {
-	case MSM_SD_SHUTDOWN:
-	case MSM_SD_NOTIFY_FREEZE:
-	case MSM_SD_UNNOTIFY_FREEZE:
-	case VIDIOC_MSM_CPP_IOMMU_ATTACH:
-	case VIDIOC_MSM_CPP_IOMMU_DETACH:
-		break;
-	default: {
-		if (ioctl_ptr == NULL) {
-			pr_err("Wrong ioctl_ptr for cmd %u\n", cmd);
-			return -EINVAL;
-		}
+		case MSM_SD_SHUTDOWN:
+		case MSM_SD_NOTIFY_FREEZE:
+		case MSM_SD_UNNOTIFY_FREEZE:
+			break;
+		default: {
+			if (ioctl_ptr == NULL) {
+				pr_err("Wrong ioctl_ptr for cmd %u\n", cmd);
+				return -EINVAL;
+			}
 
-		*ioctl_ptr = arg;
-		if (((*ioctl_ptr) == NULL) ||
-			((*ioctl_ptr)->ioctl_ptr == NULL) ||
-			((*ioctl_ptr)->len == 0)) {
-			pr_err("Error invalid ioctl argument cmd %u", cmd);
-			return -EINVAL;
+			*ioctl_ptr = arg;
+			if ((*ioctl_ptr == NULL) ||
+				(*ioctl_ptr)->ioctl_ptr == NULL) {
+				pr_err("Error invalid ioctl argument cmd %u", cmd);
+				return -EINVAL;
+			}
+			break;
 		}
-		break;
-	}
 	}
 	return 0;
 }
@@ -2803,7 +2795,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 
-	rc = msm_cpp_validate_ioctl_input(cmd, arg, &ioctl_ptr);
+	rc = msm_cpp_validate_input(cmd, arg, &ioctl_ptr);
 	if (rc != 0) {
 		pr_err("input validation failed\n");
 		return rc;
@@ -3296,7 +3288,7 @@ STREAM_BUFF_END:
 			(cpp_dev->stream_cnt == 0)) {
 			rc = cam_smmu_ops(cpp_dev->iommu_hdl, CAM_SMMU_DETACH);
 			if (rc < 0) {
-				pr_err("%s:%dError iommu detach failed\n",
+				pr_err("%s:%dError iommu atach failed\n",
 					__func__, __LINE__);
 				rc = -EINVAL;
 				break;
@@ -3305,7 +3297,6 @@ STREAM_BUFF_END:
 		} else {
 			pr_err("%s:%d IOMMMU attach triggered in invalid state\n",
 				__func__, __LINE__);
-			rc = -EINVAL;
 		}
 		break;
 	}
@@ -3488,7 +3479,6 @@ static struct msm_cpp_frame_info_t *get_64bit_cpp_frame_from_compat(
 	new_frame->we_disable = new_frame32->we_disable;
 	new_frame->duplicate_identity = new_frame32->duplicate_identity;
 	new_frame->feature_mask = new_frame32->feature_mask;
-	new_frame->reserved = new_frame32->reserved;
 	new_frame->partial_frame_indicator =
 		new_frame32->partial_frame_indicator;
 	new_frame->first_payload = new_frame32->first_payload;
@@ -3588,7 +3578,6 @@ static void get_compat_frame_from_64bit(struct msm_cpp_frame_info_t *frame,
 	k32_frame->we_disable = frame->we_disable;
 	k32_frame->duplicate_identity = frame->duplicate_identity;
 	k32_frame->feature_mask = frame->feature_mask;
-	k32_frame->reserved = frame->reserved;
 	k32_frame->cookie = ptr_to_compat(frame->cookie);
 	k32_frame->partial_frame_indicator = frame->partial_frame_indicator;
 	k32_frame->first_payload = frame->first_payload;
@@ -3892,13 +3881,6 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 		get_user(k_queue_buf.buff_mgr_info.timestamp.tv_usec,
 			&u32_queue_buf->buff_mgr_info.timestamp.tv_usec);
 
-		/*
-		 * Update the reserved field (cds information) to buffer
-		 * manager structure so that it is propogated back to HAL
-		 */
-		get_user(k_queue_buf.buff_mgr_info.reserved,
-			&u32_queue_buf->buff_mgr_info.reserved);
-
 		kp_ioctl.ioctl_ptr = (void *)&k_queue_buf;
 		kp_ioctl.len = sizeof(struct msm_pproc_queue_buf_info);
 		is_copytouser_req = false;
@@ -3947,8 +3929,7 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 	default:
 		pr_err_ratelimited("%s: unsupported compat type :%x LOAD %lu\n",
 				__func__, cmd, VIDIOC_MSM_CPP_LOAD_FIRMWARE);
-		mutex_unlock(&cpp_dev->mutex);
-		return -EINVAL;
+		break;
 	}
 
 	mutex_unlock(&cpp_dev->mutex);
@@ -3979,7 +3960,7 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 	default:
 		pr_err_ratelimited("%s: unsupported compat type :%d\n",
 				__func__, cmd);
-		return -EINVAL;
+		break;
 	}
 
 	if (is_copytouser_req) {
@@ -4363,11 +4344,11 @@ static int msm_cpp_enable_debugfs(struct cpp_device *cpp_dev)
 {
 	struct dentry *debugfs_base;
 	debugfs_base = debugfs_create_dir("msm_cpp", NULL);
-	if (IS_ERR_OR_NULL(debugfs_base))
+	if (!debugfs_base)
 		return -ENOMEM;
 
-	if (IS_ERR_OR_NULL(debugfs_create_file("error", S_IRUGO | S_IWUSR, debugfs_base,
-		(void *)cpp_dev, &cpp_debugfs_error)))
+	if (!debugfs_create_file("error", S_IRUGO | S_IWUSR, debugfs_base,
+		(void *)cpp_dev, &cpp_debugfs_error))
 		return -ENOMEM;
 
 	return 0;
