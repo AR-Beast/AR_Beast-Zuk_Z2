@@ -402,7 +402,7 @@ static bool __wcd9xxx_switch_micbias(struct wcd9xxx_mbhc *mbhc,
 			wcd9xxx_pause_hs_polling(mbhc);
 
 		snd_soc_update_bits(codec, WCD9XXX_A_MAD_ANA_CTRL,
-			    0x10, 0x10);
+				    0x10, 0x10);
 		snd_soc_update_bits(codec, WCD9XXX_A_LDO_H_MODE_1,
 				    0x20, 0x20);
 		/* Reprogram thresholds */
@@ -4598,7 +4598,8 @@ int wcd9xxx_mbhc_set_keycode(struct wcd9xxx_mbhc *mbhc)
 				break;
 			default:
 				WARN_ONCE(1, "Wrong button number:%d\n", i);
-				return -EPERM;
+				result = -1;
+				break;
 			}
 			ret = snd_jack_set_key(mbhc->button_jack.jack,
 					       type,

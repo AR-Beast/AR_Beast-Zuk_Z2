@@ -571,8 +571,6 @@ static void goodix_ts_work_func(struct work_struct *work)
 	u8  point_data[2 + 1 + 8 * GTP_MAX_TOUCH + 1]={GTP_READ_COOR_ADDR >> 8, GTP_READ_COOR_ADDR & 0xFF};
 #if GTP_GESTURE_WAKEUP
 	u8 doze_buf[3] = {0x81, 0x4B};
-	u8 type = ((doze_buf[2] & 0x0F) - 0x0A) + (((doze_buf[2] >> 4) & 0x0F) - 0x0A) * 2;
-	char *direction[4] = {"Right", "Down", "Up", "Left"};
 #endif
 	u8  touch_num = 0;
 	u8  finger = 0;
@@ -2340,7 +2338,8 @@ static ssize_t gtp_gesture_wakeup_store(struct device *dev,
 		gesture_enabled = 1;
 	else 
 		gesture_enabled = 0;
-		return count;
+		
+	return count;
 
 }
 #endif
