@@ -2595,8 +2595,7 @@ static void goodix_ts_suspend(struct goodix_ts_data *ts)
 	s8 ret = -1;	
 	
 	GTP_DEBUG_FUNC();
-	msleep(5000);
-	if (ts->gtp_is_suspend)
+	if(ts->gtp_is_suspend)
 		return;
 	if (ts->enter_update) {
 		return;
@@ -2730,6 +2729,7 @@ static int gtp_fb_notifier_callback(struct notifier_block *noti, unsigned long e
 		}
 		else if (*blank == FB_BLANK_POWERDOWN) {
 			GTP_DEBUG("Suspend by fb notifier.");
+			msleep(5);
 			goodix_ts_suspend(ts);
 		}
 	}
