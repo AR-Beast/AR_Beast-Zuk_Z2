@@ -48,6 +48,8 @@ static const char *boost_devices[] = {
 	"soc:qcom,cpubw"
 };
 
+int wb = 1;
+module_param(wb, int, 0644);
 #define WAKE_BOOST_DURATION_MS (5000)
 static struct delayed_work wake_unboost_work;
 static struct work_struct wake_boost_work;
@@ -206,7 +208,7 @@ int update_devfreq(struct devfreq *devfreq)
 		return -EINVAL;
 
 	/* Reevaluate the proper frequency */
-	if (devfreq->do_wake_boost) {
+	if (devfreq->do_wake_boost && wb == 1) {
 		/* Use the max freq when the screen is turned on */
 		freq = UINT_MAX;
 	} else {
