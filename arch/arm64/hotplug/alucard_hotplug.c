@@ -66,13 +66,9 @@ static struct hotplug_tuners {
 	struct mutex alu_hotplug_mutex;
 } hotplug_tuners_ins = {
 	.hotplug_sampling_rate = 25,
-#ifdef CONFIG_MACH_JF
-	.hotplug_enable = 1,
-#else
 	.hotplug_enable = 0,
-#endif
 	.min_cpus_online = 1,
-	.maxcoreslimit = NR_CPUS,
+	.maxcoreslimit = 4,
 	.maxcoreslimit_sleep = 1,
 	.hp_io_is_busy = 0,
 	.hotplug_suspend = 0,
@@ -290,14 +286,6 @@ static void __ref hotplug_work_fn(struct work_struct *work)
 			&& rq_avg > pcpu_info->up_rq) {
 				++pcpu_info->cur_up_rate;
 				if (check_up) {
-#if 0
-					pr_info("CPU[%u], UPCPU[%u], \
-						cur_freq[%u], cur_load[%u], \
-						rq_avg[%u], up_rate[%u]\n",
-						cpu, upcpu, cur_freq,
-						cur_load, rq_avg,
-						pcpu_info->cur_up_rate);
-#endif
 					pcpu_info->cur_up_rate = 1;
 					pcpu_info->cur_down_rate = 1;
 					++online_cpu;
@@ -309,17 +297,6 @@ static void __ref hotplug_work_fn(struct work_struct *work)
 				&& rq_avg <= pcpu_info->down_rq))) {
 					++pcpu_info->cur_down_rate;
 					if (check_down) {
-#if 0
-						pr_info("CPU[%u], \
-							cur_freq[%u], \
-							cur_load[%u], \
-							rq_avg[%u], \
-							down_rate[%u]\n",
-							cpu, cur_freq,
-							cur_load, rq_avg,
-							pcpu_info->
-							cur_down_rate);
-#endif
 						pcpu_info->cur_up_rate = 1;
 						pcpu_info->cur_down_rate = 1;
 						++offline_cpu;
