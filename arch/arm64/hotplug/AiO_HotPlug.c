@@ -75,8 +75,8 @@ static void __ref AiO_HotPlug_work(struct work_struct *work)
 	        }
 	        else if (AiO.big_cores == 1)
 	        {
-	           cpu_online_wrapper(3);
-	      	   cpu_offline_wrapper(2);
+	           cpu_online_wrapper(2);
+	      	   cpu_offline_wrapper(3);
 		    }
 		    else if (AiO.big_cores == 2)
 		    {
@@ -185,8 +185,6 @@ static ssize_t store_big_cores(struct kobject *kobj,
 	ret = sscanf(buf, "%u", &val);
 		if (ret != 1 || val < 0 || val > 2 )
 	           return -EINVAL;
-	
-	#endif
 
 	AiO.big_cores = val;
 
