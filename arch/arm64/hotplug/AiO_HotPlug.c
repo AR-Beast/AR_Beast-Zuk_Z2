@@ -7,6 +7,7 @@
  *
  * @AyushR1 1. Ayush Rathore Modified for msm8996. 
  *          2. Added Display state awareness.
+ *          3. Max cores upon screen off.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -24,21 +25,22 @@
 
 #define AIO_HOTPLUG			"AiO_HotPlug"
 #define AIO_TOGGLE			0
-#define SUSPENDED_CORE	    1
 
       #define DEFAULT_BIG_CORES		2
       #define DEFAULT_LITTLE_CORES	2
+      #define DEFAULT_SUSPENDED_CORES 2
 
 
 static struct AiO_HotPlug {
        unsigned int toggle;
-       unsigned int suspended;
        unsigned int big_cores;
        unsigned int LITTLE_cores;
+       unsigned int suspended_cores;
 } AiO = {
 	.toggle 	 = AIO_TOGGLE,
 	.big_cores	 = DEFAULT_BIG_CORES,
 	.LITTLE_cores    = DEFAULT_LITTLE_CORES,
+	.suspended_cores = DEFAULT_SUSPENDED_CORES,
 };
 
 static struct delayed_work AiO_work;
@@ -62,11 +64,10 @@ static void __ref AiO_HotPlug_work(struct work_struct *work)
 {
 	  // Operations for a big.LITTLE SoC.
 	     // Operations for big Cluster.
-	     if (state_suspended && AiO.suspended == 1) 
+	     if (state_suspended) 
 	     {  
-			 cpu_offline_wrapper(3);
-	         cpu_offline_wrapper(2);
-             cpu_offline_wrapper(1);
+			 for (int i=3 ; i > AiO.suspended_cores ; i--) {
+			 cpu_offline_wrapper(i);}
 	     }
 	     else 
 	     {
@@ -170,31 +171,6 @@ static ssize_t store_toggle(struct kobject *kobj,
 	return count;
 }
 
-static ssize_t show_suspended(struct kobject *kobj,
-			    struct kobj_attribute *attr, 
-			    char *buf)
-{
-	return sprintf(buf, "%u\n", AiO.suspended);
-}
-
-static ssize_t store_suspended(struct kobject *kobj,
-			     struct kobj_attribute *attr,
-			     const char *buf, size_t count)
-{
-	int ret;
-	unsigned int val;
-
-	ret = sscanf(buf, "%u", &val);
-	if (ret != 1 || val < 0 || val > 1)
-	   return -EINVAL;
-	
-	if (val == AiO.suspended)
-	   return count;
-
-	AiO.suspended = val;
-	return count;
-}
-
 static ssize_t show_big_cores(struct kobject *kobj,
 			      struct kobj_attribute *attr, 
 			      char *buf)
@@ -246,6 +222,31 @@ static ssize_t store_LITTLE_cores(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t show_suspended_cores(struct kobject *kobj,
+			      struct kobj_attribute *attr, 
+			      char *buf)
+{	
+	   return sprintf(buf, "%u\n", AiO.suspended_cores);
+}
+
+static ssize_t store_suspended_cores(struct kobject *kobj,
+			       struct kobj_attribute *attr,
+			       const char *buf, size_t count)
+{
+	int ret;
+	unsigned int val;
+
+	ret = sscanf(buf, "%u", &val);
+		if (ret != 1 || val < 0 || val > 3 )
+	           return -EINVAL;
+
+	AiO.suspended_cores = val;
+
+	reschedule_AiO();
+
+	return count;
+}
+
 #define KERNEL_ATTR_RW(_name) 				\
 static struct kobj_attribute _name##_attr = 		\
        __ATTR(_name, 0664, show_##_name, store_##_name)
@@ -255,15 +256,15 @@ static struct kobj_attribute _name##_attr = 		\
        __ATTR(_name, 0444, show_##_name, NULL)
 
 KERNEL_ATTR_RW(toggle);
-KERNEL_ATTR_RW(suspended);
       KERNEL_ATTR_RW(big_cores);
       KERNEL_ATTR_RW(LITTLE_cores);
+      KERNEL_ATTR_RW(suspended_cores);
 
 static struct attribute *AiO_HotPlug_attrs[] = {
 	&toggle_attr.attr,
-	&suspended_attr.attr,
 	      &big_cores_attr.attr,
 	      &LITTLE_cores_attr.attr,
+	      &suspended_cores_attr.attr,
 	NULL,
 };
 
