@@ -1,4 +1,5 @@
 ccflags-y := -Os
+
 ifeq ($(CONFIG_MACH_ZUK_Z2_PLUS),y)
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v3-pmi8996-mtp-z2_plus.dtb
 else ifeq ($(CONFIG_MACH_ZUK_Z2_ROW),y)
