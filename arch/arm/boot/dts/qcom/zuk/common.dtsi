@@ -108,7 +108,6 @@
 		/delete-property/ qcom,bcl-hotplug-list;
 		/delete-property/ qcom,bcl-soc-hotplug-list;
 		qcom,ibat-monitor {
-			qcom,soc-low-threshold = <5>;
 			qcom,mitigation-freq-khz = <1132800>;
 		};
 	};
