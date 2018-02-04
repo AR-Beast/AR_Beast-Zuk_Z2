@@ -373,7 +373,7 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 CFLAGS_MODULE   = -O3
 AFLAGS_MODULE   = -O3
-LDFLAGS_MODULE  = --strip-debug
+LDFLAGS_MODULE  = --strip-debug -O3
 CFLAGS_KERNEL	= -O3
 AFLAGS_KERNEL	= -O3
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
@@ -392,7 +392,7 @@ endif
 ifneq ($(CLANG_ENABLE_IA),1)
 CLANG_IA_FLAG	= -no-integrated-as
 endif
-CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_IA_FLAG) -meabi gnu
+CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_IA_FLAG) -meabi gnu  -mcpu=kryo -fslp-vectorize  -fvectorize -fopenmp
 endif
 
 # Use USERINCLUDE when you must reference the UAPI directories only.
@@ -657,7 +657,7 @@ KBUILD_CFLAGS   += $(call cc-option,-fno-store-merging,)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+=  $(call cc-option,-Oz,-Os) $(call cc-disable-warning,maybe-uninitialized,)
 else
-KBUILD_CFLAGS	+= -O3
+KBUILD_CFLAGS	+= -O3 -pipe
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
