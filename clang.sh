@@ -30,7 +30,7 @@ ZIMAGE="$KERNEL_DIR/arch/$ARCH/boot/Image.gz-dtb"
 CCACHE=$(command -v ccache)
 CROSS_COMPILE="aarch64-linux-android-"
 CLANG_TC="$HOME/AR_Beast/clang/clang-4556391/bin/clang"
-CLANG_VERSION="$(${CLANG_TC} --version | head -n 1 | cut -d'(' -f1,4)"
+CLANG_VERSION="Clang 6.0.1"
 
 # Functions
 prefix() {
@@ -47,7 +47,7 @@ echo "          Compiling $kernel_name-$device_name-$kernel_version         "
 echo -e       "***************************************************************************$nocol"
         prefix $CONFIG_FILE $THREAD
         prefix $THREAD
-if ! [ -a $image ];
+if ! [ -a $ZIMAGE ];
 then
 echo -e "$red Kernel Compilation failed! Fix the errors! $nocol"
 exit 1
@@ -61,7 +61,7 @@ echo -e       "*****************************************************************
   prefix clean
   prefix mrproper
   rm -rf $anykernel/zImage
-  rm -rf $image
+  rm -rf $ZIMAGE
 }
 
 module_stock(){
@@ -89,7 +89,6 @@ copy_out(){
 turn_back(){
 cd $sourcedir
 }
-clean
 compile
 module_stock
 delete_zip
