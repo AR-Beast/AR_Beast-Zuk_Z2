@@ -1,5 +1,3 @@
-ccflags-y := -Os
-
 ccflags-y += -Idrivers/media/platform/msm/camera_v2z
 ccflags-y += -Idrivers/media/platform/msm/camera_v2z/sensor
 ccflags-y += -Idrivers/media/platform/msm/camera_v2z/codecs

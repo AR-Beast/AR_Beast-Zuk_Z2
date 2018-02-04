@@ -1,7 +1,7 @@
 #
 # Makefile for cclogic device.
 #
-ccflags-y := -Os
+
 obj-$(CONFIG_CCLOGIC)		    += cclogic-core.o
 obj-$(CONFIG_CCLOGIC)               += cclogic-class.o
 obj-$(CONFIG_TYPEC_CCLOGIC_PI5USB)  += pi5usb30216.o
