@@ -79,7 +79,7 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
   if [ -z "$KBUILD_COMPILER_STRING" ]; then
     echo \#define LINUX_COMPILER \"`$CC -v 2>&1 | grep ' version '`\"
   else
-    echo \#define LINUX_COMPILER \"$KBUILD_COMPILER_STRING\"
+    echo \#define LINUX_COMPILER \"$KBUILD_COMPILER_STRING \"
   fi;
 ) > .tmpcompile
 
