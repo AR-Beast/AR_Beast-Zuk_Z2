@@ -226,7 +226,6 @@ static void fpc1020_irq_work(struct work_struct *work)
 		__pm_wakeup_event(&fpc1020->wakeup, 5000);
 		input_report_key(fpc1020->input_dev, KEY_FINGERPRINT, 1);
 		input_sync(fpc1020->input_dev);
-		msleep(1);
 		input_report_key(fpc1020->input_dev, KEY_FINGERPRINT, 0);
 		input_sync(fpc1020->input_dev);
 	}
