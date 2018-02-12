@@ -29,6 +29,7 @@
 #include <linux/io.h>
 #include <linux/of_gpio.h>
 #include <linux/input.h>
+#include <linux/state_notifier.h>
 
 #define FPC1020_TOUCH_DEV_NAME  "fpc1020tp"
 
@@ -223,6 +224,7 @@ static void fpc1020_irq_work(struct work_struct *work)
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
 	if (!fpc1020->screen_on) {
+		state_boost();
 		__pm_wakeup_event(&fpc1020->wakeup, 5000);
 		input_report_key(fpc1020->input_dev, KEY_FINGERPRINT, 1);
 		input_sync(fpc1020->input_dev);
