@@ -322,38 +322,6 @@ static int fpc1020_alloc_input_dev(struct fpc1020_data *fpc1020)
 	return retval;
 }
 
-static void set_fingerprintd_nice(int nice)
-{
-	struct task_struct *p;
-
-	read_lock(&tasklist_lock);
-	for_each_process(p) {
-		if (!memcmp(p->comm, "fingerprintd", sizeof("fingerprintd"))) {
-			set_user_nice(p, nice);
-			break;
-		}
-	}
-	read_unlock(&tasklist_lock);
-}
-
-static void fpc1020_suspend_resume(struct work_struct *work)
-{
-	struct fpc1020_data *fpc1020 =
-		container_of(work, typeof(*fpc1020), pm_work);
-	
-	/* Escalate fingerprintd priority when screen is off */
-	if (fpc1020->screen_on) {
-		__pm_relax(&fpc1020->wakeup);
-		set_fingerprintd_nice(0);
-	}
-	
-	if (!fpc1020->screen_on) {
-		__pm_relax(&fpc1020->wakeup);
-		set_fingerprintd_nice(-1);
-		enable_irq_wake(fpc1020->irq);
-	}
-}
-
 static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
 	struct fpc1020_data *fpc1020 = container_of(self, struct fpc1020_data, fb_notif);
@@ -364,15 +332,11 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		return 0;
 
 	if (*blank == FB_BLANK_UNBLANK) {
-		cancel_work_sync(&fpc1020->pm_work);
 		fpc1020->screen_on = 1;
 		pr_err("ScreenOn\n");
-		queue_work(fpc1020->fpc1020_wq, &fpc1020->pm_work);
 	} else if (*blank == FB_BLANK_POWERDOWN) {
-		cancel_work_sync(&fpc1020->pm_work);
 		fpc1020->screen_on = 0;
 		pr_err("ScreenOff\n");
-		queue_work(fpc1020->fpc1020_wq, &fpc1020->pm_work);
 	}
 	return 0;
 }
@@ -438,7 +402,6 @@ static int fpc1020_probe(struct platform_device *pdev)
 	
 	INIT_WORK(&fpc1020->irq_work, fpc1020_irq_work);
 	INIT_WORK(&fpc1020->input_report_work, fpc1020_report_work_func);
-	INIT_WORK(&fpc1020->pm_work, fpc1020_suspend_resume);
 	
 	gpio_direction_output(fpc1020->reset_gpio, 1);
 	//Do HW reset
@@ -455,6 +418,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 	set_fpc_irq(fpc1020, true);
 	wakeup_source_init(&fpc1020->wakeup, "fpc_wakeup");
 	spin_lock_init(&fpc1020->irq_lock);
+	enable_irq_wake(fpc1020->irq);
 	
 	retval = fpc1020_initial_irq(fpc1020);
 	if (retval != 0) {
