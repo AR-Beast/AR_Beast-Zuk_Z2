@@ -323,7 +323,8 @@ static void set_fingerprintd_nice(int nice)
 
 	read_lock(&tasklist_lock);
 	for_each_process(p) {
-		if (!memcmp(p->comm, "fingerprintd", sizeof("fingerprintd"))) {
+		if (!memcmp(p->comm, "fingerprint@2.1", 16)) {
+			pr_err("fingerprint nice changed to %i\n", nice);
 			set_user_nice(p, nice);
 			break;
 		}
