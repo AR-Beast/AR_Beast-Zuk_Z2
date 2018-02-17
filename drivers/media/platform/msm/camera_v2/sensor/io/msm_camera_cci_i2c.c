@@ -72,8 +72,8 @@ int32_t msm_camera_cci_i2c_read_seq(struct msm_camera_i2c_client *client,
 		return rc;
 
 	if (num_byte > I2C_REG_DATA_MAX) {
-			pr_err("%s: Error num_byte:0x%x exceeds 8K max supported:0x%x\n",
-			__func__, num_byte, I2C_REG_DATA_MAX);
+		S_I2C_DBG("%s: Error num_byte:0x%x exceeds 8K max supported:0x%x\n",
+		__func__, num_byte, I2C_REG_DATA_MAX);
 		return rc;
 	}
 
@@ -88,6 +88,7 @@ int32_t msm_camera_cci_i2c_read_seq(struct msm_camera_i2c_client *client,
 	cci_ctrl.cfg.cci_i2c_read_cfg.addr_type = client->addr_type;
 	cci_ctrl.cfg.cci_i2c_read_cfg.data = buf;
 	cci_ctrl.cfg.cci_i2c_read_cfg.num_byte = num_byte;
+	cci_ctrl.status = -EFAULT;
 	rc = v4l2_subdev_call(client->cci_client->cci_subdev,
 			core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 	CDBG("%s line %d rc = %d\n", __func__, __LINE__, rc);
@@ -178,6 +179,7 @@ int32_t msm_camera_cci_i2c_write_seq(struct msm_camera_i2c_client *client,
 	cci_ctrl.cfg.cci_i2c_write_cfg.data_type = MSM_CAMERA_I2C_BYTE_DATA;
 	cci_ctrl.cfg.cci_i2c_write_cfg.addr_type = client->addr_type;
 	cci_ctrl.cfg.cci_i2c_write_cfg.size = num_byte;
+	cci_ctrl.status = -EFAULT;
 	rc = v4l2_subdev_call(client->cci_client->cci_subdev,
 			core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 	CDBG("%s line %d rc = %d\n", __func__, __LINE__, rc);
@@ -399,9 +401,7 @@ int32_t msm_camera_cci_i2c_poll(struct msm_camera_i2c_client *client,
 	enum msm_camera_i2c_data_type data_type, uint32_t delay_ms)
 {
 	int32_t rc = -EFAULT;
-#if 0
 	int32_t i = 0;
-#endif
 	S_I2C_DBG("%s: addr: 0x%x data: 0x%x dt: %d\n",
 		__func__, addr, data, data_type);
 
@@ -410,7 +410,6 @@ int32_t msm_camera_cci_i2c_poll(struct msm_camera_i2c_client *client,
 			__func__, __LINE__, delay_ms, MAX_POLL_DELAY_MS);
 		return -EINVAL;
 	}
-#if 0
 	for (i = 0; i < delay_ms; i++) {
 		rc = msm_camera_cci_i2c_compare(client,
 			addr, data, data_type);
@@ -418,19 +417,7 @@ int32_t msm_camera_cci_i2c_poll(struct msm_camera_i2c_client *client,
 			return rc;
 		usleep_range(1000, 1010);
 	}
-#else
-	do {
-		rc = msm_camera_cci_i2c_compare(client,
-			addr, data, data_type);
-		if (rc == I2C_COMPARE_MATCH || rc < 0)
-			return rc;
 
-		if(delay_ms == 0)
-			break;
-
-		usleep_range(1000, 1010);
-	} while(delay_ms-- > 0);
-#endif
 	/* If rc is 1 then read is successful but poll is failure */
 	if (rc == 1)
 		pr_err("%s:%d poll failed rc=%d(non-fatal)\n",
@@ -446,7 +433,7 @@ static int32_t msm_camera_cci_i2c_set_mask(struct msm_camera_i2c_client *client,
 	uint32_t addr, uint16_t mask,
 	enum msm_camera_i2c_data_type data_type, uint16_t set_mask)
 {
-	int32_t rc;
+	int32_t rc = -EFAULT;
 	uint16_t reg_data;
 
 	rc = msm_camera_cci_i2c_read(client, addr, &reg_data, data_type);
