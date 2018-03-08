@@ -9,4 +9,3 @@ obj-$(CONFIG_MSMB_CAMERA) += camera_v2/
 obj-$(CONFIG_ZUK_CAMERA) += camera_v2z/
 obj-$(CONFIG_MSM_AIS) += ais/
 obj-y += sde/
-ccflags-y += -Idrivers/media/platform/msm/camera_v2
