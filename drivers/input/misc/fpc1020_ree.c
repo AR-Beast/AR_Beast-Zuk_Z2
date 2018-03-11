@@ -54,7 +54,7 @@ struct fpc1020_data {
 	struct wake_lock wake_lock;
 	struct wake_lock fp_wl;
 	int wakeup_status;
-	int screen_on;
+    int screen_on;
 };
 
 /* From drivers/input/keyboard/gpio_keys.c */
@@ -95,68 +95,6 @@ static ssize_t irq_set(struct device *device,
 }
 
 static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_set);
-
-static ssize_t fp_wl_get(struct device *device,
-		struct device_attribute *attribute,
-		char *buffer)
-{
-	/* struct fpc1020_data* fpc1020 = dev_get_drvdata(device); */
-	return 0;
-}
-
-static ssize_t fp_wl_set(struct device *device,
-		struct device_attribute *attribute,
-		const char *buffer, size_t count)
-{
-	int retval = 0;
-	u64 val;
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
-
-	retval = kstrtou64(buffer, 0, &val);
-	if (val == 1 && !wake_lock_active(&fpc1020->fp_wl))
-		wake_lock(&fpc1020->fp_wl);
-	else if (val == 0 && wake_lock_active(&fpc1020->fp_wl))
-		wake_unlock(&fpc1020->fp_wl);
-	else
-		pr_err("HAL wakelock request fail, val = %d\n", (int)val);
-	return strnlen(buffer, count);
-}
-
-static DEVICE_ATTR(wl, S_IRUSR | S_IWUSR, fp_wl_get, fp_wl_set);
-
-static ssize_t get_wakeup_status(struct device *device,
-		struct device_attribute *attribute,
-		char *buffer)
-{
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
-
-	return scnprintf(buffer, PAGE_SIZE, "%i\n", fpc1020->wakeup_status);
-}
-
-static ssize_t set_wakeup_status(struct device *device,
-		struct device_attribute *attribute,
-		const char *buffer, size_t count)
-{
-	int retval = 0;
-	u64 val;
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
-
-	retval = kstrtou64(buffer, 0, &val);
-	pr_info("val === %d\n", (int)val);
-	if (val == 1) {
-		enable_irq_wake(fpc1020->irq);
-		fpc1020->wakeup_status = 1;
-	} else if (val == 0) {
-		disable_irq_wake(fpc1020->irq);
-		fpc1020->wakeup_status = 0;
-	} else
-		return -ENOENT;
-
-	return strnlen(buffer, count);
-}
-
-static DEVICE_ATTR(wakeup, S_IRUSR | S_IWUSR,
-		get_wakeup_status, set_wakeup_status);
 
 static ssize_t get_key(struct device *device,
 		struct device_attribute *attribute, char *buffer)
@@ -201,27 +139,9 @@ static ssize_t set_key(struct device *device,
 
 static DEVICE_ATTR(key, S_IRUSR | S_IWUSR, get_key, set_key);
 
-static ssize_t get_screen_stat(struct device* device, struct device_attribute* attribute, char* buffer)
-{
-	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
-	return scnprintf(buffer, PAGE_SIZE, "%i\n", fpc1020->screen_on);
-}
-
-static ssize_t set_screen_stat(struct device* device,
-		struct device_attribute* attribute,
-		const char*buffer, size_t count)
-{
-	return 1;
-}
-
-static DEVICE_ATTR(screen, S_IRUSR | S_IWUSR, get_screen_stat, set_screen_stat);
-
 static struct attribute *attributes[] = {
 	&dev_attr_irq.attr,
-	&dev_attr_wakeup.attr,
 	&dev_attr_key.attr,
-	&dev_attr_wl.attr,
-	&dev_attr_screen.attr,
 	NULL
 };
 
@@ -441,7 +361,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto error_remove_sysfs;
 	}
 
-	fpc1020->fpc1020_wq = create_workqueue("fpc1020_wq");
+	fpc1020->fpc1020_wq = alloc_workqueue("fpc1020_wq", WQ_HIGHPRI, 1);
 	if (!fpc1020->fpc1020_wq) {
 		pr_err("Create input workqueue failed\n");
 		goto error_unregister_device;
@@ -460,7 +380,6 @@ static int fpc1020_probe(struct platform_device *pdev)
 	}
 
 	wake_lock_init(&fpc1020->wake_lock, WAKE_LOCK_SUSPEND, "fpc_wakelock");
-	wake_lock_init(&fpc1020->fp_wl, WAKE_LOCK_SUSPEND, "fp_hal_wl");
 
 	retval = fpc1020_initial_irq(fpc1020);
 	if (retval != 0) {
@@ -492,18 +411,6 @@ error:
 	return retval;
 }
 
-static int fpc1020_resume(struct platform_device *pdev)
-{
-	int retval = 0;
-	return retval;
-}
-
-static int fpc1020_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	int retval = 0;
-	return retval;
-}
-
 static int fpc1020_remove(struct platform_device *pdev)
 {
 	int retval = 0;
@@ -520,8 +427,6 @@ static struct of_device_id fpc1020_match[] = {
 static struct platform_driver fpc1020_plat_driver = {
 	.probe = fpc1020_probe,
 	.remove = fpc1020_remove,
-	.suspend = fpc1020_suspend,
-	.resume = fpc1020_resume,
 	.driver = {
 		.name = "fpc1020",
 		.owner = THIS_MODULE,
