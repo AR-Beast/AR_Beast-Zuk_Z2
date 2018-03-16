@@ -29,6 +29,7 @@
 #include <linux/io.h>
 #include <linux/of_gpio.h>
 #include <linux/input.h>
+#include <linux/state_notifier.h>
 
 #define FPC1020_TOUCH_DEV_NAME  "fpc1020tp"
 
@@ -48,13 +49,11 @@ struct fpc1020_data {
 	struct notifier_block fb_notif;
 	/*Input device*/
 	struct input_dev *input_dev;
+	struct work_struct pm_work;
 	struct work_struct input_report_work;
 	struct workqueue_struct *fpc1020_wq;
 	u8  report_key;
-	struct wake_lock wake_lock;
-	struct wake_lock fp_wl;
-	int wakeup_status;
-    int screen_on;
+	int __read_mostly screen_on;
 };
 
 /* From drivers/input/keyboard/gpio_keys.c */
@@ -215,7 +214,10 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *_fpc1020)
 
 	pr_debug("fpc1020 IRQ interrupt\n");
 	smp_rmb();
-	wake_lock_timeout(&fpc1020->wake_lock, 300);
+	if (fpc1020->screen_on == 0) {
+		state_boost();
+		pm_wakeup_event(fpc1020->dev, 5000);
+	}
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 	return IRQ_HANDLED;
 }
@@ -304,6 +306,33 @@ static int fpc1020_alloc_input_dev(struct fpc1020_data *fpc1020)
 	return retval;
 }
 
+static void set_fingerprintd_nice(int nice)
+{
+	struct task_struct *p;
+
+	read_lock(&tasklist_lock);
+	for_each_process(p) {
+		if (!memcmp(p->comm, "fingerprint@2.1", 16)) {
+			pr_err("fingerprint nice changed to %i\n", nice);
+			set_user_nice(p, nice);
+			break;
+		}
+	}
+	read_unlock(&tasklist_lock);
+}
+
+static void fpc1020_suspend_resume(struct work_struct *work)
+{
+	struct fpc1020_data *fpc1020 =
+		container_of(work, typeof(*fpc1020), pm_work);
+
+	/* Escalate fingerprintd priority when screen is off */
+	if (!fpc1020->screen_on)
+		set_fingerprintd_nice(MIN_NICE);
+	else
+		set_fingerprintd_nice(0);
+}
+
 static int fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
 {
@@ -317,9 +346,11 @@ static int fb_notifier_callback(struct notifier_block *self,
 		if (*blank == FB_BLANK_UNBLANK) {
 			pr_err("ScreenOn\n");
 			fpc1020->screen_on = 1;
+			queue_work(fpc1020->fpc1020_wq, &fpc1020->pm_work);
 		} else if (*blank == FB_BLANK_POWERDOWN) {
 			pr_err("ScreenOff\n");
 			fpc1020->screen_on = 0;
+			queue_work(fpc1020->fpc1020_wq, &fpc1020->pm_work);
 		}
 	}
 	return 0;
@@ -367,7 +398,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto error_unregister_device;
 	}
 	INIT_WORK(&fpc1020->input_report_work, fpc1020_report_work_func);
-
+	INIT_WORK(&fpc1020->pm_work, fpc1020_suspend_resume);
 	gpio_direction_output(fpc1020->reset_gpio, 1);
 	/*Do HW reset*/
 	fpc1020_hw_reset(fpc1020);
@@ -379,7 +410,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto error_destroy_workqueue;
 	}
 
-	wake_lock_init(&fpc1020->wake_lock, WAKE_LOCK_SUSPEND, "fpc_wakelock");
+	device_init_wakeup(dev, true);
 
 	retval = fpc1020_initial_irq(fpc1020);
 	if (retval != 0) {
@@ -389,7 +420,8 @@ static int fpc1020_probe(struct platform_device *pdev)
 
 	/* Disable IRQ */
 	disable_irq(fpc1020->irq);
-
+	/* Enable irq wake */
+	enable_irq_wake(fpc1020->irq);
 	return 0;
 
 error_unregister_client:
