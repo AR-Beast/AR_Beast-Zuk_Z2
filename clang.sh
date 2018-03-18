@@ -29,8 +29,8 @@ THREAD="-j$(nproc --all)"
 ZIMAGE="$KERNEL_DIR/arch/$ARCH/boot/Image.gz-dtb"
 CCACHE=$(command -v ccache)
 CROSS_COMPILE="aarch64-linux-android-"
-CLANG_TC="$HOME/AR_Beast/clang/clang-4556391/bin/clang"
-CLANG_VERSION="Clang 6.0.1"
+CLANG_TC="$HOME/AR_Beast/dtc/bin/clang"
+CLANG_VERSION="Dragon 7.0"
 
 # Functions
 prefix() {
