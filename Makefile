@@ -379,7 +379,15 @@ AFLAGS_KERNEL	= -O3
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
 CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 
-
+OPT_FLAGS := -O3 -mtune=kryo -meabi gnu  -mcpu=kryo -fslp-vectorize  -fvectorize -fopenmp -funroll-loops \
+                -mllvm -polly \
+				-mllvm -polly-run-dce \
+				-mllvm -polly-run-inliner \
+				-mllvm -polly-opt-fusion=max \
+				-mllvm -polly-parallel -lgomp \
+				-mllvm -polly-ast-use-context \
+                -mllvm -polly-vectorizer=stripmine
+                
 ifeq ($(cc-name),clang)
 ifneq ($(CROSS_COMPILE),)
 CLANG_TRIPLE	?= $(CROSS_COMPILE)
@@ -392,7 +400,7 @@ endif
 ifneq ($(CLANG_ENABLE_IA),1)
 CLANG_IA_FLAG	= -no-integrated-as
 endif
-CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_IA_FLAG) -meabi gnu  -mcpu=kryo -fslp-vectorize  -fvectorize -fopenmp
+CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_IA_FLAG) $(OPT_FLAGS)
 endif
 
 # Use USERINCLUDE when you must reference the UAPI directories only.
