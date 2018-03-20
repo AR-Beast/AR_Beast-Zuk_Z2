@@ -149,16 +149,11 @@ int gtp_i2c_read(struct i2c_client *client, u8 *buf, int len)
 			.buf	= &buf[GTP_ADDR_LENGTH],
 		},
 	};
-
-	for (retries = 0; retries < GTP_I2C_RETRY_5; retries++) {
 		ret = i2c_transfer(client->adapter, msgs, 2);
 		if (ret == 2)
 			break;
-		dev_err(&client->dev, "I2C retry: %d\n", retries + 1);
-	}
 	return ret;
 }
-
 /*******************************************************
 Function:
 	Write data to the i2c slave device.
