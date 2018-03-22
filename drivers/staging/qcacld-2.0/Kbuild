@@ -54,6 +54,12 @@ ifeq ($(KERNEL_BUILD), 0)
 		endif
 	endif
 
+	ifeq ($(CONFIG_ARCH_MSM8909), y)
+		ifeq ($(CONFIG_ROME_IF), sdio)
+			CONFIG_WLAN_SYNC_TSF_PLUS := y
+		endif
+	endif
+
 	# As per target team, build is done as follows:
 	# Defconfig : build with default flags
 	# Slub      : defconfig  + CONFIG_SLUB_DEBUG=y +
@@ -339,6 +345,9 @@ CONFIG_FEATURE_STATS_EXT := 1
 #Flag to force the inclusion of the 802.11p channels because support
 #for these channels has not yet been added to the kernel.
 CONFIG_STATICALLY_ADD_11P_CHANNELS := n
+
+#Enable thermal shutdown
+CONFIG_WLAN_THERMAL_SHUTDOWN := 0
 
 ifeq ($(CONFIG_CFG80211),y)
 HAVE_CFG80211 := 1
@@ -1003,7 +1012,8 @@ CDEFINES :=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_LOGDUMP \
 		-DWLAN_PERF \
 		-DPTT_SOCK_SVC_ENABLE \
-		-w \
+		-Wall\
+		-Werror\
 		-D__linux__ \
 		-DHAL_SELF_STA_PER_BSS=1 \
 		-DWLAN_FEATURE_VOWIFI_11R \
@@ -1028,7 +1038,7 @@ CDEFINES :=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DWLAN_FEATURE_GTK_OFFLOAD \
 		-DWLAN_WAKEUP_EVENTS \
 		-DFEATURE_WLAN_RA_FILTERING\
-	    -DWLAN_KD_READY_NOTIFIER \
+	        -DWLAN_KD_READY_NOTIFIER \
 		-DWLAN_NL80211_TESTMODE \
 		-DFEATURE_WLAN_LPHB \
 		-DFEATURE_WLAN_PAL_TIMER_DISABLE \
@@ -1051,6 +1061,11 @@ endif
 
 ifeq ($(CONFIG_FEATURE_COEX_PTA_CONFIG_ENABLE), y)
 CDEFINES += -DFEATURE_COEX_PTA_CONFIG_ENABLE
+endif
+
+ifeq ($(CONFIG_QCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK), y)
+CDEFINES += -DQCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK
+CDEFINES += -DFEATURE_BUS_BANDWIDTH
 endif
 
 ifeq ($(CONFIG_WLAN_FEATURE_FILS),y)
@@ -1668,6 +1683,11 @@ endif
 
 ifeq ($(CONFIG_HIF_PCI), 1)
 CDEFINES += -DFORCE_LEGACY_PCI_INTERRUPTS
+endif
+
+ifeq ($(CONFIG_WLAN_THERMAL_SHUTDOWN), 1)
+CDEFINES += -DFEATURE_WLAN_THERMAL_SHUTDOWN
+CDEFINES += -DFEATURE_WLAN_AUTO_SHUTDOWN
 endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)

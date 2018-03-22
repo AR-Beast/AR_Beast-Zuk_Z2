@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -652,7 +652,8 @@ static void hdd_power_debugstats_cb(struct power_stats_response *response,
 	power_stats->cumulative_sleep_time_ms
 			= response->cumulative_sleep_time_ms;
 	power_stats->cumulative_total_on_time_ms
-			= response->cumulative_total_on_time_ms;
+			= response->cumulative_total_on_time_ms -
+					response->cumulative_sleep_time_ms;
 	power_stats->deep_sleep_enter_counter
 			= response->deep_sleep_enter_counter;
 	power_stats->last_deep_sleep_enter_tstamp_ms
@@ -925,19 +926,19 @@ VOS_STATUS hdd_debugfs_init(hdd_adapter_t *pAdapter)
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     pHddCtx->debugfs_phy = debugfs_create_dir(HDD_DEBUGFS_DIRNAME, 0);
 
-    if (IS_ERR_OR_NULL(pHddCtx->debugfs_phy))
+    if (NULL == pHddCtx->debugfs_phy)
         return VOS_STATUS_E_FAILURE;
 
-    if (IS_ERR_OR_NULL(debugfs_create_file("wow_enable", S_IRUSR | S_IWUSR,
-        pHddCtx->debugfs_phy, pAdapter, &fops_wowenable)))
+    if (NULL == debugfs_create_file("wow_enable", S_IRUSR | S_IWUSR,
+        pHddCtx->debugfs_phy, pAdapter, &fops_wowenable))
         return VOS_STATUS_E_FAILURE;
 
-    if (IS_ERR_OR_NULL(debugfs_create_file("wow_pattern", S_IRUSR | S_IWUSR,
-        pHddCtx->debugfs_phy, pAdapter, &fops_wowpattern)))
+    if (NULL == debugfs_create_file("wow_pattern", S_IRUSR | S_IWUSR,
+        pHddCtx->debugfs_phy, pAdapter, &fops_wowpattern))
         return VOS_STATUS_E_FAILURE;
 
-    if (IS_ERR_OR_NULL(debugfs_create_file("pattern_gen", S_IRUSR | S_IWUSR,
-        pHddCtx->debugfs_phy, pAdapter, &fops_patterngen)))
+    if (NULL == debugfs_create_file("pattern_gen", S_IRUSR | S_IWUSR,
+        pHddCtx->debugfs_phy, pAdapter, &fops_patterngen))
         return VOS_STATUS_E_FAILURE;
 
     if (VOS_STATUS_SUCCESS != wlan_hdd_init_power_stats_debugfs(pAdapter,
