@@ -1315,7 +1315,6 @@ static void __queue_work(int cpu, struct workqueue_struct *wq,
 	struct worker_pool *last_pool;
 	struct list_head *worklist;
 	unsigned int work_flags;
-	unsigned int req_cpu = cpu;
 
 	/*
 	 * While a work item is PENDING && off queue, a task trying to
@@ -1331,9 +1330,6 @@ static void __queue_work(int cpu, struct workqueue_struct *wq,
 	if (unlikely(wq->flags & __WQ_DRAINING) &&
 	    WARN_ON_ONCE(!is_chained_work(wq)))
 		return;
-
-	if (req_cpu == WORK_CPU_UNBOUND)
-		cpu = 0;
 retry:
 	/* pwq which will be used unless @work is executing elsewhere */
 	if (!(wq->flags & WQ_UNBOUND))
@@ -1385,7 +1381,7 @@ retry:
 	}
 
 	/* pwq determined, queue */
-	trace_workqueue_queue_work(req_cpu, pwq, work);
+	trace_workqueue_queue_work(cpu, pwq, work);
 
 	if (WARN_ON(!list_empty(&work->entry))) {
 		spin_unlock(&pwq->pool->lock);
@@ -1476,10 +1472,7 @@ static void __queue_delayed_work(int cpu, struct workqueue_struct *wq,
 	dwork->cpu = cpu;
 	timer->expires = jiffies + delay;
 
-	if (unlikely(cpu != WORK_CPU_UNBOUND))
-		add_timer_on(timer, cpu);
-	else
-		add_timer_on(timer, 0);
+	add_timer_on(timer, cpu);
 }
 
 /**
@@ -3363,7 +3356,6 @@ void free_workqueue_attrs(struct workqueue_attrs *attrs)
 struct workqueue_attrs *alloc_workqueue_attrs(gfp_t gfp_mask)
 {
 	struct workqueue_attrs *attrs;
-	const unsigned long allowed_cpus = 0x3;
 
 	attrs = kzalloc(sizeof(*attrs), gfp_mask);
 	if (!attrs)
@@ -3371,7 +3363,7 @@ struct workqueue_attrs *alloc_workqueue_attrs(gfp_t gfp_mask)
 	if (!alloc_cpumask_var(&attrs->cpumask, gfp_mask))
 		goto fail;
 
-	cpumask_copy(attrs->cpumask, to_cpumask(&allowed_cpus));
+	cpumask_copy(attrs->cpumask, cpu_possible_mask);
 	return attrs;
 fail:
 	free_workqueue_attrs(attrs);
@@ -4342,7 +4334,7 @@ bool current_is_workqueue_rescuer(void)
  * no synchronization around this function and the test result is
  * unreliable and only useful as advisory hints or for debugging.
  *
- * If @cpu is WORK_CPU_UNBOUND, the test is performed on the local CPU.
+ * If @cpu is WORK_CPU_UNBOUND, the test is performed on CPU0.
  * Note that both per-cpu and unbound workqueues may be associated with
  * multiple pool_workqueues which have separate congested states.  A
  * workqueue being congested on one CPU doesn't mean the workqueue is also
@@ -4357,9 +4349,6 @@ bool workqueue_congested(int cpu, struct workqueue_struct *wq)
 	bool ret;
 
 	rcu_read_lock_sched();
-
-	if (cpu == WORK_CPU_UNBOUND)
-		cpu = 0;
 
 	if (!(wq->flags & WQ_UNBOUND))
 		pwq = per_cpu_ptr(wq->cpu_pwqs, cpu);
