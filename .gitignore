@@ -36,6 +36,7 @@
 modules.builtin
 Module.symvers
 *.dwo
+drivers/platform/msm/ipa/ipa_common
 
 #
 # Top-level generic files
