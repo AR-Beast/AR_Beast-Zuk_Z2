@@ -653,7 +653,8 @@ void resched_cpu(int cpu)
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&rq->lock, flags);
-	resched_curr(rq);
+	if (cpu_online(cpu) || cpu == smp_processor_id())
+		resched_curr(rq);
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
 }
 
@@ -8403,6 +8404,10 @@ void sched_setnuma(struct task_struct *p, int nid)
 	struct rq *rq;
 	unsigned long flags;
 	bool queued, running;
+
+	/* Force all unbound kthreads onto CPU0 */
+	if (p->flags & PF_KTHREAD && cpumask_weight(new_mask) > 1)
+		new_mask = get_cpu_mask(0);
 
 	rq = task_rq_lock(p, &flags);
 	queued = task_on_rq_queued(p);

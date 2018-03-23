@@ -109,7 +109,6 @@ enum doze {
 static enum doze doze_status = DOZE_DISABLED;
 static s8 gtp_enter_doze(struct goodix_ts_data *ts);
 
-bool init_done;
 static u8 chip_gt9xxs;  /* true if ic is gt9xxs, like gt915s */
 u8 grp_cfg_version;
 struct i2c_client  *i2c_connect_client;
@@ -150,29 +149,11 @@ int gtp_i2c_read(struct i2c_client *client, u8 *buf, int len)
 			.buf	= &buf[GTP_ADDR_LENGTH],
 		},
 	};
-
-	for (retries = 0; retries < GTP_I2C_RETRY_5; retries++) {
 		ret = i2c_transfer(client->adapter, msgs, 2);
 		if (ret == 2)
 			break;
-		dev_err(&client->dev, "I2C retry: %d\n", retries + 1);
-	}
-	if (retries == GTP_I2C_RETRY_5) {
-		if (ts->pdata->slide_wakeup)
-			/* reset chip would quit doze mode */
-			if (DOZE_ENABLED == doze_status)
-				return ret;
-
-		if (init_done)
-			gtp_reset_guitar(ts, 10);
-		else
-			dev_warn(&client->dev,
-				"gtp_reset_guitar exit init_done=%d:\n",
-				init_done);
-	}
 	return ret;
 }
-
 /*******************************************************
 Function:
 	Write data to the i2c slave device.
@@ -207,13 +188,6 @@ int gtp_i2c_write(struct i2c_client *client, u8 *buf, int len)
 		if (ts->pdata->slide_wakeup)
 			if (DOZE_ENABLED == doze_status)
 				return ret;
-
-		if (init_done)
-			gtp_reset_guitar(ts, 10);
-		else
-			dev_warn(&client->dev,
-				"gtp_reset_guitar exit init_done=%d:\n",
-				init_done);
 	}
 	return ret;
 }
@@ -2104,8 +2078,7 @@ static int goodix_ts_probe(struct i2c_client *client,
 						ret);
 		goto exit_remove_sysfs;
 	}
-
-	init_done = true;
+	
 	return 0;
 exit_free_irq:
 	mutex_destroy(&ts->lock);
