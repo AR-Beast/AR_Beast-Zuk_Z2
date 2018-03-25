@@ -6,10 +6,10 @@ cyan='\033[0;36m'
 yellow='\033[0;33m'
 red='\033[0;31m'
 nocol='\033[0m'
-kernel_version="R6"
+kernel_version="6"
 kernel_name="AR_Beast™"
 device_name="Z2_Plus"
-zip_name="$kernel_name-$device_name-$kernel_version-$(date +"%Y%m%d")-$(date +"%H%M%S").zip"
+zip_name="$kernel_name-$device_name-R$kernel_version-$(date +"%Y%m%d")-$(date +"%H%M%S").zip"
 
 
 export LD_LIBRARY_PATH="${TOOL_CHAIN_PATH}/../lib"
@@ -41,11 +41,17 @@ prefix() {
              HOSTCC="${CLANG_TC}" \
              $@
 }
+version() {
+	touch .version
+	echo "$(($kernel_version - 1))" > .version
+}
+
 compile() {
 echo -e "$blue****************************************************************************"
 echo "          Compiling $kernel_name-$device_name-$kernel_version         "
 echo -e       "***************************************************************************$nocol"
         prefix $CONFIG_FILE $THREAD
+        version
         prefix $THREAD
 if ! [ -a $ZIMAGE ];
 then
