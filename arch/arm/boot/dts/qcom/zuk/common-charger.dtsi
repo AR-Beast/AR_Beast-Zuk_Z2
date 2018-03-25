@@ -1,6 +1,6 @@
 &pmi8994_charger {
 	qcom,battery-data = <&mtp_batterydata>;	
-	// qcom,fastchg-current-ma = <2400>; Using custom current 
+	qcom,fastchg-current-ma = <2400>;
 	qcom,float-voltage-mv = <4400>;
 	qcom,thermal-mitigation = <2400 1500 900 0>;
 	qcom,warm-cc-comp = <1300>;
