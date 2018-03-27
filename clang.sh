@@ -1,6 +1,4 @@
 #!/bin/bash
-
-BUILD_START=$(date +"%s")
 blue='\033[0;34m'
 cyan='\033[0;36m'
 yellow='\033[0;33m'
@@ -39,7 +37,7 @@ prefix() {
              CROSS_COMPILE=${TOOLCHAIN_PATH}/${CROSS_COMPILE} \
              KBUILD_COMPILER_STRING="${CLANG_VERSION}" \
              HOSTCC="${CLANG_TC}" \
-             $@
+             $@ -s
 }
 version() {
 	touch .version
@@ -47,17 +45,22 @@ version() {
 }
 
 compile() {
+BUILD_START=$(date +"%s")
 echo -e "$blue****************************************************************************"
-echo "          Compiling $kernel_name-$device_name-$kernel_version         "
+echo "          Compiling $kernel_name-$device_name-R$kernel_version         "
 echo -e       "***************************************************************************$nocol"
+echo "          Making Config      "
         prefix $CONFIG_FILE $THREAD
+echo "          Appending Version info    "
         version
+echo "          Compiling      "
         prefix $THREAD
 if ! [ -a $ZIMAGE ];
 then
 echo -e "$red Kernel Compilation failed! Fix the errors! $nocol"
 exit 1
 fi
+BUILD_END=$(date +"%s")
 }
 clean() {
 echo -e "$yellow****************************************************************************"
@@ -74,8 +77,6 @@ module_stock(){
   rm -rf $anykernel/modules/
   mkdir $anykernel/modules
   find $objdir -name '*.ko' -exec cp -av {} $anykernel/modules/ \;
-  # strip modules
-  ${CROSS_COMPILE}strip --strip-unneeded $anykernel/modules/*
   cp -rf $ZIMAGE $anykernel/zImage
 }
 delete_zip(){
@@ -103,7 +104,6 @@ make_name
 copy_out
 turn_back
 clean
-BUILD_END=$(date +"%s")
 DIFF=$(($BUILD_END - $BUILD_START))
 echo -e "$yellow****************************************************************************"
 echo -e "$cyan Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds.$nocol"
