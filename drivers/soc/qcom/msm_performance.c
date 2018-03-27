@@ -459,8 +459,6 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 	}
 	put_online_cpus();
 #endif
-
-#endif
 	return 0;
 }
 
