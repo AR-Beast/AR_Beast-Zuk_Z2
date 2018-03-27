@@ -24,6 +24,7 @@
 #include "include/msm_csiphy_3_1_hwreg.h"
 #include "include/msm_csiphy_3_2_hwreg.h"
 #include "include/msm_csiphy_3_4_2_hwreg.h"
+#include "include/msm_csiphy_3_4_2_1_hwreg.h"
 #include "include/msm_csiphy_3_5_hwreg.h"
 #include "cam_hw_ops.h"
 
@@ -38,6 +39,7 @@
 #define CSIPHY_VERSION_V31                        0x31
 #define CSIPHY_VERSION_V32                        0x32
 #define CSIPHY_VERSION_V342                       0x342
+#define CSIPHY_VERSION_V342_1                     0x3421
 #define CSIPHY_VERSION_V35                        0x35
 #define MSM_CSIPHY_DRV_NAME                      "msm_csiphy"
 #define CLK_LANE_OFFSET                             1
@@ -46,7 +48,7 @@
 #define CSI_3PHASE_HW                               1
 #define MAX_LANES                                   4
 #define CLOCK_OFFSET                              0x700
-#define CSIPHY_SOF_DEBUG_COUNT                      2
+#define CSIPHY_SOF_DEBUG_COUNT                      3
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -293,6 +295,11 @@ static int msm_csiphy_2phase_lane_config(
 
 	csiphybase = csiphy_dev->base;
 	lane_mask = csiphy_params->lane_mask & 0x1f;
+
+	lane_enable = msm_camera_io_r(csiphybase +
+		csiphy_dev->ctrl_reg->csiphy_3ph_reg.
+		mipi_csiphy_3ph_cmn_ctrl5.addr);
+
 	for (i = 0; i < MAX_LANES; i++) {
 		if (mask == 0x2) {
 			if (lane_mask & mask)
@@ -330,7 +337,11 @@ static int msm_csiphy_2phase_lane_config(
 			clk_lane = 0;
 		}
 
-		if (csiphy_params->combo_mode == 1) {
+		/* In combo mode setting the 4th lane
+		 * as clk_lane for 1 lane sensor, checking
+		 * the lane_mask == 0x18 for one lane sensor
+		 */
+		if ((csiphy_params->combo_mode == 1) && (lane_mask == 0x18)) {
 			val |= 0xA;
 			if (mask == csiphy_dev->ctrl_reg->
 				csiphy_reg.combo_clk_mask) {
@@ -376,6 +387,12 @@ static int msm_csiphy_2phase_lane_config(
 				mipi_csiphy_2ph_lnn_cfg4.data, csiphybase +
 				csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 				mipi_csiphy_2ph_lnn_cfg4.addr + offset);
+			if (lane_mask == 0x18)
+				msm_camera_io_w(0x80,
+					csiphybase +
+					csiphy_dev->ctrl_reg->csiphy_3ph_reg.
+					mipi_csiphy_2ph_lnn_cfg1.addr + offset);
+
 		} else {
 			msm_camera_io_w(csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 				mipi_csiphy_2ph_lnn_cfg1.data,
@@ -383,7 +400,8 @@ static int msm_csiphy_2phase_lane_config(
 				csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 				mipi_csiphy_2ph_lnn_cfg1.addr + offset);
 		}
-		if (csiphy_dev->hw_version == CSIPHY_VERSION_V342 &&
+		if ((csiphy_dev->hw_version == CSIPHY_VERSION_V342 ||
+		    csiphy_dev->hw_version == CSIPHY_VERSION_V342_1) &&
 			csiphy_params->combo_mode == 1) {
 			msm_camera_io_w(0x52,
 				csiphybase +
@@ -396,8 +414,9 @@ static int msm_csiphy_2phase_lane_config(
 				csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 				mipi_csiphy_2ph_lnn_cfg5.addr + offset);
 		}
-		if (clk_lane == 1 &&
-			csiphy_dev->hw_version == CSIPHY_VERSION_V342) {
+		if (clk_lane == 1 && lane_mask != 0x18 &&
+			(csiphy_dev->hw_version == CSIPHY_VERSION_V342 ||
+			csiphy_dev->hw_version == CSIPHY_VERSION_V342_1)) {
 			msm_camera_io_w(0x1f,
 				csiphybase +
 				csiphy_dev->ctrl_reg->csiphy_3ph_reg.
@@ -413,7 +432,8 @@ static int msm_csiphy_2phase_lane_config(
 			mipi_csiphy_2ph_lnn_test_imp.data,
 			csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 			mipi_csiphy_2ph_lnn_test_imp.addr + offset);
-		if (csiphy_dev->hw_version == CSIPHY_VERSION_V342) {
+		if ((csiphy_dev->hw_version == CSIPHY_VERSION_V342 ||
+			csiphy_dev->hw_version == CSIPHY_VERSION_V342_1)) {
 			msm_camera_io_w(csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 				mipi_csiphy_2ph_lnn_ctrl5.data,
 				csiphybase +
@@ -422,7 +442,8 @@ static int msm_csiphy_2phase_lane_config(
 		}
 		mask <<= 1;
 	}
-	if (csiphy_dev->hw_version == CSIPHY_VERSION_V342 &&
+	if ((csiphy_dev->hw_version == CSIPHY_VERSION_V342 ||
+		csiphy_dev->hw_version == CSIPHY_VERSION_V342_1) &&
 		csiphy_params->combo_mode != 1) {
 		msm_camera_io_w(csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 			mipi_csiphy_3ph_cmn_ctrl0.data,
@@ -635,47 +656,6 @@ static int msm_csiphy_lane_config(struct csiphy_device *csiphy_dev,
 	return rc;
 }
 
-void msm_csiphy_disable_irq(
-	struct csiphy_device *csiphy_dev)
-{
-	void __iomem *csiphybase;
-
-	csiphybase = csiphy_dev->base;
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl11.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl12.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl13.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl14.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl15.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl16.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl17.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl18.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl19.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl20.addr);
-	msm_camera_io_w(0,
-		csiphybase + csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-		mipi_csiphy_3ph_cmn_ctrl21.addr);
-}
-
 static irqreturn_t msm_csiphy_irq(int irq_num, void *data)
 {
 	uint32_t irq;
@@ -685,10 +665,8 @@ static irqreturn_t msm_csiphy_irq(int irq_num, void *data)
 	if (csiphy_dev->csiphy_sof_debug == SOF_DEBUG_ENABLE) {
 		if (csiphy_dev->csiphy_sof_debug_count < CSIPHY_SOF_DEBUG_COUNT)
 			csiphy_dev->csiphy_sof_debug_count++;
-		else {
-			msm_csiphy_disable_irq(csiphy_dev);
+		else
 			return IRQ_HANDLED;
-		}
 	}
 
 	for (i = 0; i < csiphy_dev->num_irq_registers; i++) {
@@ -748,17 +726,17 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	}
 
 	CDBG("%s:%d called\n", __func__, __LINE__);
-	if (csiphy_dev->csiphy_state == CSIPHY_POWER_UP) {
-		pr_err("%s: csiphy invalid state %d\n", __func__,
-			csiphy_dev->csiphy_state);
-		rc = -EINVAL;
+	if (csiphy_dev->ref_count++) {
+		CDBG("%s csiphy refcount = %d\n", __func__,
+			csiphy_dev->ref_count);
 		return rc;
 	}
 	CDBG("%s:%d called\n", __func__, __LINE__);
 
-	if (csiphy_dev->ref_count++) {
-		CDBG("%s csiphy refcount = %d\n", __func__,
-			csiphy_dev->ref_count);
+	if (csiphy_dev->csiphy_state == CSIPHY_POWER_UP) {
+		pr_err("%s: csiphy invalid state %d\n", __func__,
+			csiphy_dev->csiphy_state);
+		rc = -EINVAL;
 		return rc;
 	}
 	CDBG("%s:%d called\n", __func__, __LINE__);
@@ -867,6 +845,12 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	}
 	csiphy_dev->csiphy_sof_debug_count = 0;
 	CDBG("%s:%d called\n", __func__, __LINE__);
+	if (csiphy_dev->ref_count++) {
+		CDBG("%s csiphy refcount = %d\n", __func__,
+			csiphy_dev->ref_count);
+		return rc;
+	}
+	CDBG("%s:%d called\n", __func__, __LINE__);
 	if (csiphy_dev->csiphy_state == CSIPHY_POWER_UP) {
 		pr_err("%s: csiphy invalid state %d\n", __func__,
 			csiphy_dev->csiphy_state);
@@ -875,12 +859,6 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	}
 	CDBG("%s:%d called\n", __func__, __LINE__);
 
-	if (csiphy_dev->ref_count++) {
-		CDBG("%s csiphy refcount = %d\n", __func__,
-			csiphy_dev->ref_count);
-		return rc;
-	}
-	CDBG("%s:%d called\n", __func__, __LINE__);
 	rc = cam_config_ahb_clk(NULL, 0, CAM_AHB_CLIENT_CSIPHY,
 			CAM_AHB_SVS_VOTE);
 	if (rc < 0) {
@@ -1171,6 +1149,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 			mipi_csiphy_glbl_pwr_cfg_addr);
 	}
 	if (csiphy_dev->csiphy_sof_debug == SOF_DEBUG_ENABLE) {
+		csiphy_dev->csiphy_sof_debug = SOF_DEBUG_DISABLE;
 		disable_irq(csiphy_dev->irq->start);
 	}
 	if (csiphy_dev->hw_dts_version <= CSIPHY_VERSION_V22) {
@@ -1543,6 +1522,12 @@ static int csiphy_probe(struct platform_device *pdev)
 		new_csiphy_dev->ctrl_reg->csiphy_3ph_reg = csiphy_v3_4_2_3ph;
 		new_csiphy_dev->ctrl_reg->csiphy_reg = csiphy_v3_4_2;
 		new_csiphy_dev->hw_dts_version = CSIPHY_VERSION_V342;
+		new_csiphy_dev->csiphy_3phase = CSI_3PHASE_HW;
+	} else if (of_device_is_compatible(new_csiphy_dev->pdev->dev.of_node,
+		"qcom,csiphy-v3.4.2.1")) {
+		new_csiphy_dev->ctrl_reg->csiphy_3ph_reg = csiphy_v3_4_2_1_3ph;
+		new_csiphy_dev->ctrl_reg->csiphy_reg = csiphy_v3_4_2_1;
+		new_csiphy_dev->hw_dts_version = CSIPHY_VERSION_V342_1;
 		new_csiphy_dev->csiphy_3phase = CSI_3PHASE_HW;
 	} else if (of_device_is_compatible(new_csiphy_dev->pdev->dev.of_node,
 		"qcom,csiphy-v3.5")) {

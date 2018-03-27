@@ -14,7 +14,7 @@
 #include "msm_camera_spi.h"
 
 #undef SPIDBG
-#ifdef CONFIG_ZUK_CAMERA_DEBUG
+#ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define SPIDBG(fmt, args...) pr_debug(fmt, ##args)
 #define S_I2C_DBG(fmt, args...) pr_debug(fmt, ##args)
 #else
