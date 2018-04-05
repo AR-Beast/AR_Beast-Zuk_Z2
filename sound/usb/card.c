@@ -222,7 +222,6 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 	void *control_header;
 	int i, protocol;
 	int rest_bytes;
-
 	usb_iface = usb_ifnum_to_if(dev, ctrlif);
 	if (!usb_iface) {
 		snd_printk(KERN_ERR "%d:%u : does not exist\n",
