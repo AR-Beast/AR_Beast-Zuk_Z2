@@ -9574,7 +9574,11 @@ void csrRoamingStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
                  */
                 csrRemoveCmdWithSessionIdFromPendingList(pMac,
                                         pSmeRsp->sessionId,
-                                        &pMac->sme.smeScanCmdPendingList,
+                                        &pMac->sme.smeCmdPendingList,
+                                        eSmeCommandWmStatusChange);
+                csrRemoveCmdWithSessionIdFromPendingList(pMac,
+                                        pSmeRsp->sessionId,
+                                        &pMac->roam.roamCmdPendingList,
                                         eSmeCommandWmStatusChange);
                 csrRoamRoamingStateDeauthRspProcessor( pMac, (tSirSmeDeauthRsp *)pSmeRsp );
             }
@@ -9654,7 +9658,7 @@ void csrRoamJoinedStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
             tSirSmeAssocIndToUpperLayerCnf *pUpperLayerAssocCnf;
             tCsrRoamInfo roamInfo;
             tCsrRoamInfo *pRoamInfo = NULL;
-            tANI_U32 sessionId;
+            tANI_U32 sessionId = 0;
             eHalStatus status;
             smsLog( pMac, LOG1, FL("ASSOCIATION confirmation can be given to upper layer "));
             vos_mem_set(&roamInfo, sizeof(tCsrRoamInfo), 0);
@@ -14485,6 +14489,16 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
             ucDot11Mode = WNI_CFG_DOT11_MODE_11N;
         }
 
+#if defined(FEATURE_WLAN_WAPI) && defined(WLAN_WAPI_MODE_11AC_DISABLE)
+        if( csrIsProfileWapi( pProfile ) &&
+           ((ucDot11Mode == WNI_CFG_DOT11_MODE_11AC) ||
+            (ucDot11Mode == WNI_CFG_DOT11_MODE_11AC_ONLY)) )
+        {
+            //Disable 11ac when WAPI is used
+            ucDot11Mode = WNI_CFG_DOT11_MODE_11N;
+        }
+#endif
+
         smsLog(pMac, LOG1, FL("dot11mode %d uCfgDot11Mode %d"),
                               ucDot11Mode, pSession->bssParams.uCfgDot11Mode);
 
@@ -17451,7 +17465,7 @@ eHalStatus csrGetSnr(tpAniSirGlobal pMac,
 {
    eHalStatus status = eHAL_STATUS_SUCCESS;
    vos_msg_t  msg;
-   tANI_U32 sessionId;
+   tANI_U32 sessionId = 0;
 
    tAniGetSnrReq *pMsg;
 
