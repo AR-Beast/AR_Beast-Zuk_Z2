@@ -5382,7 +5382,7 @@ static void smbchg_handle_hvdcp3_disable(struct smbchg_chip *chip)
 	} else if (is_usb_present(chip)) {
 		read_usb_type(chip, &usb_type_name, &usb_supply_type);
 		smbchg_change_usb_supply_type(chip, usb_supply_type);
-		if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
+		if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP) {
 			queue_delayed_work(system_power_efficient_wq,
 				&chip->hvdcp_det_work,
 				msecs_to_jiffies(HVDCP_NOTIFY_MS));
