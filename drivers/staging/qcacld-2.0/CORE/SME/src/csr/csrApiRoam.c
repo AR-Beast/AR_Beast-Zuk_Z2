@@ -9658,7 +9658,7 @@ void csrRoamJoinedStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
             tSirSmeAssocIndToUpperLayerCnf *pUpperLayerAssocCnf;
             tCsrRoamInfo roamInfo;
             tCsrRoamInfo *pRoamInfo = NULL;
-            tANI_U32 sessionId = 0;
+            tANI_U32 sessionId;
             eHalStatus status;
             smsLog( pMac, LOG1, FL("ASSOCIATION confirmation can be given to upper layer "));
             vos_mem_set(&roamInfo, sizeof(tCsrRoamInfo), 0);
@@ -17465,7 +17465,7 @@ eHalStatus csrGetSnr(tpAniSirGlobal pMac,
 {
    eHalStatus status = eHAL_STATUS_SUCCESS;
    vos_msg_t  msg;
-   tANI_U32 sessionId = 0;
+   tANI_U32 sessionId;
 
    tAniGetSnrReq *pMsg;
 
@@ -18460,7 +18460,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
                        vos_nv_getChannelEnabledState(*ChannelList),
                        *ChannelList,
                        num_channels);
-            ChannelList++;
+              ChannelList++;
         }
         pRequestBuf->ConnectedNetwork.ChannelCount = num_channels;
         /* If the profile changes as to what it was earlier, inform the
@@ -20139,7 +20139,7 @@ eHalStatus csrRoamReadTSF(tpAniSirGlobal pMac, tANI_U8 *pTimestamp,
     }
     pBssDescription = handoffNode.pBssDescription;
     // Get the time diff in nano seconds
-    timer_diff = (vos_get_monotonic_boottime_ns() -
+    timer_diff = (vos_get_bootbased_boottime_ns() -
                   pBssDescription->scansystimensec);
     // Convert nano to micro sec timer
     timer_diff = vos_do_div(timer_diff, SYSTEM_TIME_NSEC_TO_USEC);
