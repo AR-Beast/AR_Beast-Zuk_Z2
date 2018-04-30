@@ -22884,6 +22884,7 @@ static inline void wma_free_wow_ptrn(tp_wma_handle wma, u_int8_t ptrn_id)
 	wma->wow.no_of_ptrn_cached--;
 }
 
+#if 0
 /* Converts wow wakeup reason code to text format */
 static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason, tp_wma_handle wma)
 {
@@ -22978,6 +22979,7 @@ static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason, tp_wma_handle wma)
 	}
 	return "unknown";
 }
+#endif
 
 static void wma_beacon_miss_handler(tp_wma_handle wma, u_int32_t vdev_id,
 				    uint32_t rssi)
@@ -23489,6 +23491,8 @@ static void wma_extscan_wow_event_callback(void *handle, void *event,
  *
  * Return: none
  */
+
+#if 0
 static void wma_wow_wake_up_stats_display(tp_wma_handle wma)
 {
 	WMA_LOGA("uc %d bc %d v4_mc %d v6_mc %d ra %d ns %d na %d pno_match %d pno_complete %d gscan %d low_rssi %d rssi_breach %d icmp %d icmpv6 %d oem %d chip pwr save fail : %d",
@@ -23511,6 +23515,11 @@ static void wma_wow_wake_up_stats_display(tp_wma_handle wma)
 
 	return;
 }
+#else
+static inline void wma_wow_wake_up_stats_display(tp_wma_handle wma)
+{
+}
+#endif
 
 /**
  * wma_wow_ipv6_mcast_stats() - ipv6 mcast wake up stats
@@ -23982,8 +23991,6 @@ static void wma_wow_parse_data_pkt_buffer(uint8_t *data,
 			if (proto_subtype == ADF_PROTO_IPV4_TCP) {
 				tcp_seq_num = (uint32_t)(*(uint32_t *)(data +
 					IPV4_TCP_SEQ_NUM_OFFSET));
-				WMA_LOGD("TCP_seq_num: %u",
-					adf_os_cpu_to_be32(tcp_seq_num));
 			}
 		}
 		break;
@@ -24007,8 +24014,6 @@ static void wma_wow_parse_data_pkt_buffer(uint8_t *data,
 			if (proto_subtype == ADF_PROTO_IPV6_TCP) {
 				tcp_seq_num = (uint32_t)(*(uint32_t *)(data +
 					IPV6_TCP_SEQ_NUM_OFFSET));
-				WMA_LOGD("TCP_seq_num: %u",
-					adf_os_cpu_to_be32(tcp_seq_num));
 			}
 		}
 		break;
@@ -24200,10 +24205,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 				__func__, wake_info->vdev_id);
 			return -EINVAL;
 		}
-		WMA_LOGA("WOW wakeup host event received (reason: %s(%d)) for vdev %d",
-			wma_wow_wake_reason_str(wake_info->wake_reason, wma),
-			wake_info->wake_reason,
-			wake_info->vdev_id);
 		vos_wow_wakeup_host_event(wake_info->wake_reason);
 		wma_wow_wakeup_stats_event(wma);
 	}
@@ -40212,7 +40213,7 @@ int wma_dfs_indicate_radar(struct ieee80211com *ic,
 	    ( pmac->sap.SapDfsInfo.disable_dfs_ch_switch == VOS_TRUE) )
 	{
 		radar_event = (struct wma_dfs_radar_indication *)
-			vos_mem_malloc(sizeof(*radar_event));
+			vos_mem_malloc(sizeof(struct wma_dfs_radar_indication));
 		if (radar_event == NULL) {
 			WMA_LOGE(FL("Failed to allocate memory for radar_event"));
 			adf_os_spin_unlock_bh(&ic->chan_lock);
