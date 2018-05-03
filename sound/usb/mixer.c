@@ -2528,12 +2528,6 @@ _error:
 
 void snd_usb_mixer_disconnect(struct usb_mixer_interface *mixer)
 {
-<<<<<<< HEAD
-	struct usb_mixer_interface *mixer;
-
-	mixer = list_entry(p, struct usb_mixer_interface, list);
-=======
->>>>>>> b60baacf2077091fda45bc6e6c172c5f075161f5
 	if (mixer->disconnected)
 		return;
 	if (mixer->urb)
